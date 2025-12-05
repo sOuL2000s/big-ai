@@ -2,18 +2,25 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateStreamingResponse } from '@/lib/gemini';
 import { getConversation, createConversation, updateConversation } from '@/lib/history';
-import { ChatMessage, Conversation } from '@/types/chat';
+import { getSettings } from '@/lib/settings'; // <-- NEW IMPORT
+import { ChatMessage, Conversation, FileAttachment } from '@/types/chat';
+import { getAuthId } from '@/lib/firebaseAdmin';
 
 export const runtime = 'nodejs'; 
 
-// Define the response type for the client to handle context
 interface ChatRequest {
     chatId?: string; 
     message: string;
+    files?: FileAttachment[]; // NEW: Multimodal files
 }
 
 // --- GET: Load existing conversation history ---
 export async function GET(req: NextRequest) {
+    const userId = await getAuthId(req);
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized: Missing Authentication' }, { status: 401 });
+    }
+
     try {
         const { searchParams } = new URL(req.url);
         const chatId = searchParams.get('chatId');
@@ -22,13 +29,13 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'chatId is required' }, { status: 400 });
         }
 
-        const conversation = await getConversation(chatId);
+        // Use userId in getConversation for authorization check
+        const conversation = await getConversation(chatId, userId);
 
         if (!conversation) {
-             return NextResponse.json({ error: 'Conversation not found' }, { status: 404 });
+             return NextResponse.json({ error: 'Conversation not found or unauthorized' }, { status: 404 });
         }
 
-        // Return the full conversation object
         return NextResponse.json(conversation);
 
     } catch (error) {
@@ -40,40 +47,76 @@ export async function GET(req: NextRequest) {
 
 // --- POST: Handle new message/streaming ---
 export async function POST(req: NextRequest) {
+    const userId = await getAuthId(req);
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized: Missing Authentication' }, { status: 401 });
+    }
+
   try {
-    const { message, chatId: incomingChatId }: ChatRequest = await req.json();
+    const { message, chatId: incomingChatId, files = [] }: ChatRequest = await req.json();
 
     if (!message || message.trim() === '') {
-        return NextResponse.json({ error: 'Message cannot be empty.' }, { status: 400 });
+        // Allow empty text if files are present (e.g., "Analyze this image")
+        if (files.length === 0) {
+            return NextResponse.json({ error: 'Message cannot be empty.' }, { status: 400 });
+        }
     }
 
     let conversation: Conversation | null = null;
     let chatId = incomingChatId;
+    let isFirstExchange = false;
 
     if (chatId) {
-        conversation = await getConversation(chatId);
+        conversation = await getConversation(chatId, userId);
+        if (!conversation) {
+            return NextResponse.json({ error: 'Conversation not found or unauthorized.' }, { status: 404 });
+        }
     } else {
-        // Mock user ID (should come from actual session/auth)
-        conversation = await createConversation('mock_user_id', message);
+        // NEW: Fetch global settings for model and system prompt
+        const userSettings = await getSettings(userId);
+        
+        // NEW: Create conversation with global settings context
+        conversation = await createConversation(
+            userId, 
+            message, 
+            files,
+            userSettings.globalModel, // Pass global model
+            userSettings.globalSystemPrompt // Pass global system prompt
+        );
         chatId = conversation.id;
+        isFirstExchange = true;
     }
 
-    // 1. Generate the streaming response
+    // 1. Prepare history and current prompt (including files)
     const history: ChatMessage[] = conversation?.messages || [];
     
+    // The current exchange (user message + files) is added to the history context for Gemini
+    const userMessageForContext: ChatMessage = { 
+        id: 'temp', 
+        text: message, 
+        role: 'user', 
+        timestamp: Date.now(),
+        files: files.length > 0 ? files : undefined,
+    } as ChatMessage;
+
     const fullHistoryContext: ChatMessage[] = [
         ...history,
-        { id: 'temp', text: message, role: 'user', timestamp: Date.now() } as ChatMessage
+        userMessageForContext
     ];
+    
+    // Optional: Pass system prompt from conversation settings
+    const systemInstruction = conversation?.systemPrompt;
 
+    // 2. Generate the streaming response
     const stream = await generateStreamingResponse(
         fullHistoryContext,
-        message
+        systemInstruction
     );
     
-    // 2. Read the entire stream response to save it to the database
+    // 3. Read the entire stream response to save it to the database
     let fullBotResponse = '';
     
+    // Use .tee() to create two identical streams: one for the client, one for history saving
     const [clientStream, historyStream] = stream.tee();
     
     const reader = historyStream.getReader();
@@ -88,16 +131,16 @@ export async function POST(req: NextRequest) {
                 fullBotResponse += decoder.decode(value);
             }
             
-            // 3. Persist the full exchange asynchronously
+            // 4. Persist the full exchange asynchronously
             if (chatId) {
-                await updateConversation(chatId, message, fullBotResponse, conversation?.messages.length === 0);
+                await updateConversation(chatId, message, fullBotResponse, userId, files, isFirstExchange);
             }
         } catch (dbError) {
             console.error('CRITICAL: Error saving history to Firestore:', dbError);
         }
     })();
     
-    // 4. Send the streaming response back to the client immediately
+    // 5. Send the streaming response back to the client immediately
     const response = new NextResponse(clientStream, {
         headers: {
             'Content-Type': 'text/plain',

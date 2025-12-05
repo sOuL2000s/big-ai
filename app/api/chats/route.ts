@@ -1,20 +1,22 @@
 // app/api/chats/route.ts
-import { NextResponse } from 'next/server';
-import { db } from '@/lib/firebaseAdmin';
+import { NextRequest, NextResponse } from 'next/server';
+import { db, getAuthId } from '@/lib/firebaseAdmin';
 import { Conversation } from '@/types/chat';
 
 export const runtime = 'nodejs';
 
-// Mock user ID for now, replace with actual authentication in production
-const MOCK_USER_ID = 'mock_user_id'; 
-
 /**
  * Fetches a list of recent conversations for the current user.
  */
-export async function GET() {
+export async function GET(req: NextRequest) {
+    const userId = await getAuthId(req);
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized: Missing Authentication' }, { status: 401 });
+    }
+    
     try {
         const snapshot = await db.collection('conversations')
-            .where('userId', '==', MOCK_USER_ID)
+            .where('userId', '==', userId) // Use real User ID
             .orderBy('updatedAt', 'desc')
             .limit(20) // Limit to 20 recent chats
             .get();

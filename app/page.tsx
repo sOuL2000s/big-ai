@@ -4,8 +4,12 @@
 import { useState } from 'react';
 import ChatArea from '@/components/ChatArea';
 import Sidebar from '@/components/Sidebar';
+import { useAuth } from '@/components/providers/AuthProvider';
+import AuthGate from '@/components/ui/AuthGate';
 
 export default function HomePage() {
+  const { user, loading: authLoading } = useAuth();
+  
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
   const [refreshSidebarToggle, setRefreshSidebarToggle] = useState(false);
 
@@ -18,6 +22,17 @@ export default function HomePage() {
     setRefreshSidebarToggle(prev => !prev);
   }
 
+  // Show loading state if authentication is in progress
+  if (authLoading) {
+    return <div className="flex h-screen items-center justify-center text-xl">Loading application...</div>
+  }
+
+  // Show AuthGate if user is not logged in
+  if (!user) {
+    return <AuthGate />;
+  }
+
+  // Main application view
   return (
     <div className="flex h-screen bg-gray-50 dark:bg-gray-800">
       {/* 1. Sidebar */}

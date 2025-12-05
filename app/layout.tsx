@@ -1,9 +1,8 @@
 // app/layout.tsx
 import type { Metadata } from "next";
-// import { Geist, Geist_Mono } from "next/font/google"; // REMOVED standard Next.js font imports
 import "./globals.css";
+import { AuthProvider } from '@/components/providers/AuthProvider';
 
-// The fonts are now typically managed via Tailwind config or global CSS if using v4+.
 
 export const metadata: Metadata = {
   title: "Big AI Chatbot (Production)",
@@ -16,10 +15,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      {/* Remove Geist variables if not configured in globals.css/tailwind.config */}
+    <html lang="en" suppressHydrationWarning>
       <body className={`antialiased`}> 
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );

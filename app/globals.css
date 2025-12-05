@@ -1,6 +1,10 @@
 /* app/globals.css */
 @import "tailwindcss";
 
+/* Import PrismJS themes */
+/* The dark theme import was in ChatBubble.tsx, moving it here ensures it applies globally */
+@import 'prismjs/themes/prism-tomorrow.css'; /* Using 'tomorrow' for a modern, sleek dark look */
+
 /*
  * --- Global Default Variables (Small AI v2 Default Light) ---
  */
@@ -1713,15 +1717,24 @@ body {
 
 /* Markdown and Code Styling Overrides */
 
-/* Code block container */
-.message-content pre {
-    /* Ensure no padding on the PRE itself, the padding goes on the CODE element */
+/* Code block wrapper (created by custom renderer) */
+.code-block-container {
     background-color: var(--code-block-bg) !important;
     border: 1px solid var(--code-block-border) !important;
     border-radius: 0.5rem !important;
     margin-top: 1rem !important;
     margin-bottom: 1rem !important;
-    padding: 0 !important; 
+    overflow: hidden; /* Contains children border radius */
+}
+
+/* Code block container (standard markdown pre tag) */
+.message-content pre {
+    /* Remove default markdown styles from PRE */
+    background-color: var(--code-block-bg) !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
     overflow-x: auto; /* FIX: Enable horizontal scroll */
 }
 
@@ -1732,16 +1745,20 @@ body {
     padding: 0.5rem 1rem;
     border-bottom: 1px solid var(--code-block-border);
     font-size: 0.85em;
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
+    display: flex; /* Ensure button aligns */
+    justify-content: space-between;
+    align-items: center;
 }
 
-/* Code content inside pre */
+/* Code content inside pre (Prism.js applies most styling here) */
 .message-content pre code {
-    color: var(--text-primary);
+    /* Override Prism's default padding/margin/background/text settings */
+    color: var(--text-primary); /* Use theme color for text */
     display: block;
     padding: 1rem !important; /* Padding for the code content */
-    background: none !important;
+    background: transparent !important; /* Use container background, not code background */
+    min-width: 100%; /* Important for horizontal scrolling */
+    box-sizing: border-box;
 }
 
 /* Inline code */

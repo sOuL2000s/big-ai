@@ -8,7 +8,7 @@ import { ChatMessage, FileAttachment } from '@/types/chat';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import Prism from 'prismjs';
-import 'prismjs/themes/prism-dark.css'; 
+// Removed: import 'prismjs/themes/prism-dark.css'; // Now imported in globals.css for global application
 
 // Import specific Prism languages needed
 import 'prismjs/components/prism-javascript';
@@ -26,6 +26,11 @@ let isSpeaking = false;
 let currentUtterance: SpeechSynthesisUtterance | null = null;
 let currentButtonRef: React.MutableRefObject<HTMLButtonElement | null> | null = null;
 
+const SPEAK_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>`;
+const PAUSE_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+const COPY_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>`;
+const CHECK_ICON = `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+
 const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonElement | null>) => {
     if (!window.speechSynthesis) return console.error('Speech synthesis not supported.');
 
@@ -37,8 +42,7 @@ const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonE
     // Reset icon on the previously speaking button, if applicable
     if (currentButtonRef && currentButtonRef.current) {
         const iconSpan = currentButtonRef.current.querySelector('[data-icon="tts"]');
-        // Reset to Speak icon (volume-2 equivalent)
-        if (iconSpan) iconSpan.innerHTML = `<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>`;
+        if (iconSpan) iconSpan.innerHTML = SPEAK_ICON;
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -49,16 +53,14 @@ const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonE
         currentUtterance = utterance;
         currentButtonRef = buttonRef;
         const iconSpan = buttonRef.current?.querySelector('[data-icon="tts"]');
-        // Change to Pause icon (stop circle equivalent)
-        if (iconSpan) iconSpan.innerHTML = `<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`; 
+        if (iconSpan) iconSpan.innerHTML = PAUSE_ICON;
     };
     utterance.onend = () => {
         isSpeaking = false;
         currentUtterance = null;
         currentButtonRef = null;
         const iconSpan = buttonRef.current?.querySelector('[data-icon="tts"]');
-        // Reset to Speak icon
-        if (iconSpan) iconSpan.innerHTML = `<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>`; 
+        if (iconSpan) iconSpan.innerHTML = SPEAK_ICON;
     };
     utterance.onerror = (event) => {
         console.error('Speech synthesis error:', event.error);
@@ -99,14 +101,14 @@ renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped
             <button type="button" class="copy-button p-1 rounded transition flex items-center gap-1 text-xs" 
                 data-code="${encodeURIComponent(unescapedCode)}" 
                 style="color: var(--text-secondary); padding: 0.25rem 0.5rem;">
-                <span data-icon="clipboard">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
-                </span>
+                <span data-icon="clipboard" style="color: var(--text-secondary);">${COPY_ICON}</span>
                 <span data-text="Copy">Copy</span>
             </button>
         </div>
     `;
-
+    
+    // We wrap the standard <pre> tag in the .code-block-container defined in CSS
+    // The inner <pre><code> is where Prism.js applies its magic
     return `
         <div class="code-block-container" data-lang="${language}">
             ${header}
@@ -177,12 +179,12 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                         const textSpan = button.querySelector('[data-text]');
                         
                         // Checkmark icon
-                        if (iconSpan) iconSpan.innerHTML = `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+                        if (iconSpan) iconSpan.innerHTML = CHECK_ICON;
                         if (textSpan) textSpan.textContent = "Copied!";
 
                         setTimeout(() => {
                             // Clipboard icon
-                            if (iconSpan) iconSpan.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>`;
+                            if (iconSpan) iconSpan.innerHTML = COPY_ICON;
                             if (textSpan) textSpan.textContent = "Copy";
                         }, 2000);
                     }).catch(err => {
@@ -214,18 +216,24 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
         navigator.clipboard.writeText(message.text)
             .then(() => {
                  // Provide visual feedback by temporarily changing the icon
-                 const iconSpan = copyButtonRef.current?.querySelector('svg');
-                 if (iconSpan && copyButtonRef.current) {
-                     // Checkmark icon
-                     copyButtonRef.current.style.color = 'var(--accent-success)';
-                     iconSpan.outerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+                 if (copyButtonRef.current) {
+                     const iconSpan = copyButtonRef.current.querySelector('svg');
+                     if (iconSpan) {
+                         // Use innerHTML update for reliability
+                         iconSpan.outerHTML = CHECK_ICON;
+                     }
                      
+                     // Temporarily set the color for the entire button/icon
+                     copyButtonRef.current.style.color = 'var(--accent-success)';
+
                      setTimeout(() => {
-                         // Clipboard icon
                          if (copyButtonRef.current) {
                              copyButtonRef.current.style.color = 'var(--text-secondary)';
+                             const resetIconSpan = copyButtonRef.current.querySelector('svg');
+                             if (resetIconSpan) {
+                                  resetIconSpan.outerHTML = COPY_ICON;
+                             }
                          }
-                         iconSpan.outerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>`;
                      }, 2000);
                  }
             })
@@ -249,7 +257,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                             />
                         ) : (
                             // File icon placeholder
-                            <svg className="w-8 h-8" style={{color: 'var(--accent-secondary)'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM17 17H7m10-4H7m4-4H7"></path></svg>
+                            <svg className="w-8 h-8 shrink-0" style={{color: 'var(--accent-secondary)'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM17 17H7m10-4H7m4-4H7"></path></svg>
                         )}
                         <span className="text-xs truncate w-full text-center mt-1" style={{color: 'var(--text-secondary)'}}>
                             {file.filename}
@@ -309,10 +317,11 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                             ref={copyButtonRef}
                             onClick={handleCopyText} 
                             title="Copy Message"
-                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)]"
+                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" // Added flex classes
                             style={{color: 'var(--text-secondary)'}}
                         >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
+                            {/* FIX: Explicitly set stroke and color for SVG consistency */}
+                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
                         </button>
 
                         {/* Dictate Button (Only when not pending) */}
@@ -321,12 +330,13 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                                 ref={dictateButtonRef}
                                 onClick={() => toggleSpeech(message.text, dictateButtonRef)}
                                 title="Dictate Message (TTS)"
-                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)]"
+                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" // Added flex classes
                                 style={{color: 'var(--text-secondary)'}}
                             >
-                                <span data-icon="tts">
+                                <span data-icon="tts" className='flex items-center justify-center'>
                                     {/* Default Dictate Icon */}
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
+                                    {/* FIX: Explicitly set stroke and color for SVG consistency */}
+                                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
                                 </span>
                             </button>
                         )}

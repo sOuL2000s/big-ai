@@ -176,6 +176,22 @@ export async function updateConversation(
 }
 
 /**
+ * Deletes a single conversation by its ID. (NEW)
+ */
+export async function deleteConversation(chatId: string, userId: string): Promise<void> {
+    const docRef = db.collection(CONVERSATIONS_COLLECTION).doc(chatId);
+    
+    // Security check: Verify ownership before deletion
+    const doc = await docRef.get();
+    if (!doc.exists || doc.data()?.userId !== userId) {
+        throw new Error("Unauthorized chat deletion attempt.");
+    }
+
+    await docRef.delete();
+}
+
+
+/**
  * Deletes all chats for a user. (Used by the new DELETE /api/chats route)
  */
 export async function deleteAllUserConversations(userId: string): Promise<void> {

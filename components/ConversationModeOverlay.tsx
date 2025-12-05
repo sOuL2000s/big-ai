@@ -22,11 +22,9 @@ const CONVERSATION_PERSONALITIES = [
     { name: "Teacher", prompt: "Respond as a patient and knowledgeable teacher, explaining concepts clearly and simply, and guiding the user to understanding." },
 ];
 
-const DEFAULT_MODEL = 'gemini-2.5-flash-preview-09-2025';
-
 export default function ConversationModeOverlay({ chatId, onChatIdChange, onClose, onNewMessageSent }: ConversationModeOverlayProps) {
     const { user, getIdToken } = useAuth();
-    const { settings, updateSettings } = useTheme();
+    const { settings } = useTheme(); // Note: We rely on global model/system prompt from settings
     
     // State for managing voice output
     const [isAiSpeaking, setIsAiSpeaking] = useState(false);
@@ -35,6 +33,7 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
     const [lastUtterance, setLastUtterance] = useState<{ role: 'user' | 'ai', text: string } | null>(null);
 
     // State for Conversation Settings
+    // NOTE: We rely on the theme settings to hold these values in the full implementation
     const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
     const [selectedPersonality, setSelectedPersonality] = useState<string>(CONVERSATION_PERSONALITIES[0].name);
 
@@ -46,10 +45,14 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
             const voices = window.speechSynthesis.getVoices().filter(v => v.lang.startsWith('en'));
             setAvailableVoices(voices);
             
-            // Set default/stored voice
-            const storedVoiceName = settings?.themeName || null;
-            if (storedVoiceName) {
-                setSelectedVoice(voices.find(v => v.name === storedVoiceName)?.name || null);
+            // Set default/stored voice (using settings placeholder for simplicity)
+            const storedVoiceName = settings?.themeName || null; // Reusing themeName context for voice storage temporarily
+            if (storedVoiceName && voices.length > 0) {
+                // Find a default voice if the stored one isn't available
+                setSelectedVoice(voices.find(v => v.name === storedVoiceName)?.name || voices[0].name);
+            } else if (voices.length > 0) {
+                 // Set a default if nothing is stored
+                 setSelectedVoice(voices[0].name);
             }
         };
 
@@ -60,12 +63,22 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
 
         // Load conversation settings from global settings
         if (settings) {
-            setSelectedPersonality(settings.globalSystemPrompt ? 'Custom Prompt' : CONVERSATION_PERSONALITIES[0].name);
+            // Check if globalSystemPrompt is active (handled via the PromptManager)
+            if (settings.globalSystemPrompt.trim()) {
+                setSelectedPersonality('Custom Prompt');
+            } else {
+                 // Fallback to the default personality if custom prompt is inactive
+                setSelectedPersonality(CONVERSATION_PERSONALITIES[0].name);
+            }
         }
-
+        
+        // Cleanup TTS on component unmount
         return () => {
-            window.speechSynthesis.cancel();
+            if (window.speechSynthesis.speaking || window.speechSynthesis.paused) {
+                window.speechSynthesis.cancel();
+            }
         };
+
     }, [settings]);
 
     // Speech Recognition Hook for the Conversation Loop
@@ -79,17 +92,26 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
     } = useSpeechRecognition({
         continuous: false, // Ensure it stops after detecting a pause
         onStart: () => {
-            setStatus('listening');
-            setStatusMessage('Listening...');
-            setLastUtterance({ role: 'user', text: '' });
+            // Only update status if AI isn't currently speaking
+            if (!isAiSpeaking) {
+                setStatus('listening');
+                setStatusMessage('Listening...');
+                setLastUtterance({ role: 'user', text: '' });
+            }
         },
         onFinalTranscript: (finalTranscript) => {
             setLastUtterance({ role: 'user', text: finalTranscript });
+            // Immediately stop listening if we got a final transcript, as continuous is false
+            stopListening();
             handleUserSpeechEnd(finalTranscript);
+        },
+        onInterimTranscript: (interimTranscript) => {
+             // Update interim text displayed to user
+             setLastUtterance(prev => ({ role: 'user', text: (prev?.text || '') + interimTranscript }));
         },
         onEnd: () => {
             if (status === 'listening') {
-                // If it ended without a final transcript (e.g., no speech detected)
+                // If it ended without a final transcript (e.g., no speech detected, or user paused too long)
                 setStatus('idle');
                 setStatusMessage('No speech detected. Tap the mic to try again.');
             }
@@ -98,15 +120,13 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
             console.error("Conversation STT Error:", error);
             setStatus('error');
             setStatusMessage(`Error: ${error}. Tap the mic to restart.`);
+             setTimeout(() => {
+                setStatus('idle');
+                setStatusMessage('Tap the mic to start speaking.');
+            }, 5000);
         }
     });
 
-    const conversationHistory: ChatMessage[] = useMemo(() => {
-        // Fetch current chat history if available, otherwise start new
-        // NOTE: In a real app, this should fetch history specific to the current chatId
-        // For simplicity in this component, we rely on the chat being active/loaded in the parent
-        return []; 
-    }, [chatId]);
 
     // --- Core Conversation Loop Handlers ---
 
@@ -123,16 +143,10 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
         try {
             const token = await getIdToken();
             
-            // Construct request payload
-            const historyForApi: ChatMessage[] = [...conversationHistory, { 
-                id: uuidvv4(), 
-                text: userText, 
-                role: 'user', 
-                timestamp: Date.now() 
-            }];
-            
+            // Determine the system prompt based on settings
             const systemPrompt = settings?.globalSystemPrompt.trim();
-
+            const personalityPrompt = CONVERSATION_PERSONALITIES.find(p => p.name === selectedPersonality)?.prompt;
+            
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: { 
@@ -142,8 +156,8 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
                 body: JSON.stringify({
                     message: userText,
                     chatId: chatId, 
-                    // Pass current system prompt for context, prioritizing global setting
-                    globalSystemPrompt: systemPrompt, 
+                    // Pass system prompt only for NEW chats, or if we want to explicitly use a personality prompt
+                    globalSystemPrompt: chatId ? systemPrompt : (systemPrompt || personalityPrompt), 
                 }),
             });
             
@@ -157,8 +171,17 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
                 onChatIdChange(newChatId); 
             }
             
-            // Stream processing (simplified for non-streaming context here)
-            const fullBotResponse = await response.text();
+            // Read streamed response (assuming the API is designed to return plain text in this route)
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let fullBotResponse = '';
+
+            // This is a simplified stream reading compared to ChatArea, as we need the full text before TTS
+            while (reader) {
+                 const { done, value } = await reader.read();
+                 if (done) break;
+                 fullBotResponse += decoder.decode(value);
+            }
             
             setLastUtterance({ role: 'ai', text: fullBotResponse });
             startSpeaking(fullBotResponse);
@@ -169,8 +192,10 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
             setStatus('error');
             setStatusMessage(`AI Error: ${error instanceof Error ? error.message : 'Unknown communication error.'}`);
             setTimeout(() => {
-                setStatus('idle');
-                setStatusMessage('Tap the mic to restart.');
+                if (recognitionSupported) {
+                    setStatus('idle');
+                    setStatusMessage('Tap the mic to restart.');
+                }
             }, 5000);
         }
     };
@@ -193,33 +218,44 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
             setIsAiSpeaking(false);
             // After AI speaks, restart listening
             if (recognitionSupported) {
+                 // Slight delay before restarting mic to prevent capturing residual sound
                  setTimeout(() => startListening(), 500); 
             } else {
                  setStatus('idle');
                  setStatusMessage('Conversation finished. Speech recognition disabled.');
             }
         };
+        utterance.onerror = (e) => {
+            console.error('TTS Error:', e);
+            setIsAiSpeaking(false);
+            if (recognitionSupported) {
+                 setTimeout(() => startListening(), 500); 
+            } else {
+                 setStatus('idle');
+            }
+        }
 
         window.speechSynthesis.speak(utterance);
     };
 
     const handleMicToggle = () => {
-        if (!recognitionSupported) {
-            setStatus('error');
-            setStatusMessage("Speech Recognition is not supported in this browser.");
-            return;
-        }
+        if (!user) return;
         
         if (isAiSpeaking) {
             window.speechSynthesis.cancel();
             setIsAiSpeaking(false);
             setStatus('idle');
-            setStatusMessage('AI speech canceled.');
+            setStatusMessage('AI speech canceled. Tap the mic to restart.');
         } else if (isListening) {
             stopListening();
             setStatus('idle');
-            setStatusMessage('Listening stopped.');
+            setStatusMessage('Listening stopped. Tap the mic to restart.');
         } else {
+            if (!recognitionSupported) {
+                 setStatus('error');
+                 setStatusMessage("Speech Recognition is not supported in this browser.");
+                 return;
+            }
             // Reset state and start listening
             resetTranscript();
             setLastUtterance(null);
@@ -231,8 +267,7 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
     const soundBlobState = isListening ? 'listening' : (isAiSpeaking ? 'speaking' : 'idle');
     const micButtonState = isListening || isAiSpeaking;
 
-    const currentVoice = availableVoices.find(v => v.name === selectedVoice);
-    const currentPersonality = settings?.globalSystemPrompt.trim() 
+    const currentPersonalityDisplay = settings?.globalSystemPrompt.trim() 
         ? 'Custom Prompt' 
         : CONVERSATION_PERSONALITIES.find(p => p.name === selectedPersonality)?.name || 'Standard';
 
@@ -261,14 +296,17 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
                 </div>
                 <div className='flex items-center gap-2 text-sm'>
                      <span style={{color: 'var(--accent-primary)'}}>Personality:</span> 
-                    <span className='font-semibold'>{currentPersonality}</span>
+                    <span className='font-semibold'>{currentPersonalityDisplay}</span>
                 </div>
             </div>
 
             {/* Sound Blob Animation Area */}
             <div className="relative w-72 h-72 flex items-center justify-center mt-20 mb-8">
+                {/* Note: Tailwind doesn't easily support the complex CSS animations/shapes from Part 2,
+                    so we use simple concentric circles driven by state variables. */}
                 <div 
-                    className={`absolute w-full h-full rounded-full transition-all duration-500 ${soundBlobState === 'listening' ? 'scale-110 opacity-70 blur-md' : soundBlobState === 'speaking' ? 'scale-105 opacity-80 blur-sm' : 'scale-90 opacity-50 blur-lg'}`}
+                    className={`absolute w-full h-full rounded-full transition-all duration-500 blur-lg 
+                        ${soundBlobState === 'listening' ? 'scale-110 opacity-70' : soundBlobState === 'speaking' ? 'scale-105 opacity-80' : 'scale-90 opacity-50'}`}
                     style={{backgroundColor: 'var(--conversation-indicator)'}}
                 ></div>
                  <div 

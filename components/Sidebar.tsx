@@ -19,7 +19,7 @@ interface SidebarProps {
     onOpenConversationMode: () => void; 
 }
 
-// Available Models list (matches Part 2's list structure for the dropdown)
+// Available Models list
 const AVAILABLE_MODELS = [
     { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro' },
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
@@ -58,11 +58,44 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
 
     useEffect(() => {
         fetchHistory();
-    }, [currentChatId, onNewMessageSent, fetchHistory]); 
+    }, [onNewMessageSent, fetchHistory]); 
 
     const handleNewChat = () => {
         onSelectChat(undefined);
     };
+    
+    const handleDeleteChat = async (chatIdToDelete: string) => {
+        if (!user) return;
+        
+        // Fetch title for confirmation message (optional, but nice UX)
+        const chatToDelete = history.find(c => c.id === chatIdToDelete);
+        const title = chatToDelete?.title || "this chat";
+
+        if (confirm(`Are you sure you want to delete ${title}? This cannot be undone.`)) {
+            try {
+                const token = await getIdToken();
+                const response = await fetch(`/api/chat?chatId=${chatIdToDelete}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (response.ok) {
+                    setHistory(prev => prev.filter(c => c.id !== chatIdToDelete));
+                    
+                    if (currentChatId === chatIdToDelete) {
+                        onSelectChat(undefined); // Switch to a new chat
+                    }
+                    onNewMessageSent(); // Force history refresh
+                } else {
+                    console.error("Failed to delete chat:", await response.json());
+                    alert("Failed to delete chat. Check console.");
+                }
+            } catch (error) {
+                 console.error("Error deleting chat:", error);
+                 alert("Error deleting chat. Check console.");
+            }
+        }
+    }
 
     const handleSignOut = async () => {
         if (confirm("Are you sure you want to sign out?")) {
@@ -71,6 +104,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
     };
     
     const handleDeleteAllChats = async () => {
+        // ... (Existing implementation)
         if (!user) return;
         if (confirm("DANGER: Are you sure you want to permanently delete ALL your chat history? This cannot be undone.")) {
             try {
@@ -84,7 +118,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                     setHistory([]);
                     onSelectChat(undefined);
                 } else {
-                    console.error("Failed to delete all chats:", await response.json());
+                    console.error('Failed to delete all chats:', await response.json());
                 }
             } catch (error) {
                  console.error("Error deleting all chats:", error);
@@ -93,8 +127,8 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
     }
 
     const handleClearLocalStorage = () => {
+        // ... (Existing implementation)
         if (confirm('WARNING: Are you sure you want to clear all local settings (themes, model selection)? Your chat history (saved in the cloud) will NOT be affected, but you may need to re-login and re-select your preferred theme.')) {
-            // This is a browser action, safe for client component
             localStorage.clear(); 
             window.location.reload(); 
         }
@@ -124,12 +158,14 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
             
             <div className="flex items-center justify-between pb-4 border-b mb-4" style={{borderColor: 'var(--sidebar-border)'}}>
                  <h2 className="text-xl font-bold flex items-center gap-2" style={{color: 'var(--text-primary)'}}>
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z"></path></svg>
+                    {/* Updated Branding Icon (Using a custom one, mimicking the Part 2 icon look) */}
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M4.343 19.657l.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                     Big AI
                 </h2>
             </div>
             
             {/* New Chat Button */}
+            {/* ... (Existing New Chat Button) */}
             <button
                 onClick={handleNewChat}
                 className="w-full flex items-center justify-center p-3 rounded-xl font-semibold shadow-lg transition-colors mb-4"
@@ -138,6 +174,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                 <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path></svg> 
                 Start New Chat
             </button>
+
 
             {/* Conversation Mode Button */}
              <button
@@ -163,10 +200,9 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                 )}
                 
                 {history.map((chat) => (
-                    <button
+                    <div 
                         key={chat.id}
-                        onClick={() => onSelectChat(chat.id)}
-                        className={`flex w-full items-center rounded-lg p-3 text-left text-sm transition duration-150 truncate ${
+                        className={`group flex items-center justify-between p-3 rounded-lg text-sm transition duration-150 ${
                             chat.id === currentChatId 
                                 ? 'font-semibold' 
                                 : 'hover:opacity-80'
@@ -174,14 +210,35 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                         style={{
                             backgroundColor: chat.id === currentChatId ? 'var(--accent-primary)' : 'var(--bg-secondary)',
                             color: chat.id === currentChatId ? 'var(--ai-bubble-text)' : 'var(--text-primary)',
+                            cursor: 'pointer'
                         }}
                         title={chat.title}
                     >
-                        <svg className="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4M12 4v16"></path></svg>
-                        <span className="truncate flex-1">
-                            {chat.title}
-                        </span>
-                    </button>
+                        {/* Title Section (Clickable area to select chat) */}
+                        <button
+                            onClick={() => onSelectChat(chat.id)}
+                            className="flex items-center flex-1 min-w-0 pr-2 text-left"
+                            style={{ color: 'inherit', background: 'none', border: 'none', padding: 0 }}
+                        >
+                            <svg className="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4M12 4v16"></path></svg>
+                            <span className="truncate flex-1">
+                                {chat.title}
+                            </span>
+                        </button>
+                        
+                        {/* Delete Button (Visible on hover) */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.id); }}
+                            className={`p-1 rounded transition ml-2 shrink-0 opacity-0 group-hover:opacity-100`}
+                            title="Delete Chat"
+                            style={{ 
+                                color: chat.id === currentChatId ? 'var(--ai-bubble-text)' : 'var(--accent-error)',
+                                backgroundColor: chat.id === currentChatId ? 'var(--accent-primary-hover)' : 'transparent',
+                            }}
+                        >
+                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
                 ))}
             </div>
             
@@ -195,7 +252,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                     style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)'}}
                  >
                     <span className="flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.333.9 2.456 2.456a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.942 1.543-.9 3.333-2.456 2.456a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.333-.9-2.456-2.456a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.942-1.543.9-3.333 2.456-2.456a1.724 1.724 0 002.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.333.9 2.456 2.456a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.942 1.543-.9 3.333-2.456 2.456a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.333-.9-2.456-2.456a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.942-1.543.9-3.333 2.456-2.456a1.724 1.724 0 002.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
                         Settings
                     </span>
                     <svg className={`w-4 h-4 transition-transform ${isSettingsCollapsed ? 'transform rotate-0' : 'transform rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
@@ -231,7 +288,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                         </select>
                     </div>
 
-                    {/* Theme Selector */}
+                    {/* Theme Selector (Uses the expanded list from ThemeContext) */}
                     <div>
                         <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>Theme</label>
                         <select
@@ -256,7 +313,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                                     backgroundColor: themeMode === 'dark' ? 'var(--accent-primary)' : 'var(--text-secondary)',
                                     '--tw-translate-x': themeMode === 'dark' ? '24px' : '0',
                                     transition: 'background-color 0.4s, transform 0.4s'
-                                } as React.CSSProperties} // Cast required for inline CSS property
+                                } as React.CSSProperties}
                             ></span>
                         </label>
                     </div>

@@ -1,8 +1,8 @@
 // app/api/chat/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { generateStreamingResponse } from '@/lib/gemini';
-import { getConversation, createConversation, updateConversation } from '@/lib/history';
-import { getSettings } from '@/lib/settings'; // <-- NEW IMPORT
+import { getConversation, createConversation, updateConversation, deleteConversation } from '@/lib/history';
+import { getSettings } from '@/lib/settings';
 import { ChatMessage, Conversation, FileAttachment } from '@/types/chat';
 import { getAuthId } from '@/lib/firebaseAdmin';
 
@@ -11,7 +11,7 @@ export const runtime = 'nodejs';
 interface ChatRequest {
     chatId?: string; 
     message: string;
-    files?: FileAttachment[]; // NEW: Multimodal files
+    files?: FileAttachment[];
 }
 
 // --- GET: Load existing conversation history ---
@@ -41,6 +41,34 @@ export async function GET(req: NextRequest) {
     } catch (error) {
         console.error('API GET Error:', error);
         return NextResponse.json({ error: 'Failed to retrieve chat history' }, { status: 500 });
+    }
+}
+
+// --- DELETE: Delete a specific conversation ---
+export async function DELETE(req: NextRequest) {
+    const userId = await getAuthId(req);
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized: Missing Authentication' }, { status: 401 });
+    }
+    
+    try {
+        const { searchParams } = new URL(req.url);
+        const chatId = searchParams.get('chatId');
+
+        if (!chatId) {
+            return NextResponse.json({ error: 'chatId is required' }, { status: 400 });
+        }
+        
+        await deleteConversation(chatId, userId);
+        
+        return NextResponse.json({ message: `Conversation ${chatId} deleted successfully` });
+
+    } catch (error) {
+        console.error('API DELETE Error:', error);
+        if (error instanceof Error && error.message.includes('Unauthorized')) {
+             return NextResponse.json({ error: 'Unauthorized or conversation not found' }, { status: 403 });
+        }
+        return NextResponse.json({ error: 'Failed to delete chat history' }, { status: 500 });
     }
 }
 

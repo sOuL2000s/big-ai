@@ -19,9 +19,9 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-// Define available themes based on globals.css integration
+// Define available themes based on globals.css integration (FULL LIST MERGED)
 const THEMES = [
-    { id: 'default', name: 'Small AI v2 (Default)' },
+    { id: 'default', name: 'Big AI v2 (Default)' },
     { id: 'celestial-horizon', name: 'Celestial Horizon' },
     { id: 'verdant-calm', name: 'Verdant Calm' },
     { id: 'cybernetic-pulse', name: 'Cybernetic Pulse' },
@@ -50,6 +50,7 @@ const THEMES = [
 ];
 
 export const useTheme = () => {
+// ... existing useTheme hook
   const context = useContext(ThemeContext);
   if (context === undefined) {
     throw new Error('useTheme must be used within a ThemeProvider');
@@ -62,6 +63,7 @@ interface ThemeProviderProps {
 }
 
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
+// ... existing state and effects (fetchSettings, saveSettingsToDB, updateSettings)
   const { user, getIdToken, loading: authLoading } = useAuth();
   const [themeName, setThemeName] = useState<string>('default');
   const [themeMode, setThemeMode] = useState<'light' | 'dark'>('dark');
@@ -69,10 +71,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   const [loadingSettings, setLoadingSettings] = useState(true);
 
   const currentTheme = `${themeName}-${themeMode}`;
-
-  // --- Persistence & Fetching ---
-
+  
+  // --- Persistence & Fetching (Same as before) ---
   const fetchSettings = useCallback(async () => {
+    // ... (existing implementation)
     if (!user) {
       setLoadingSettings(false);
       return;
@@ -87,6 +89,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
       if (response.ok) {
         const data: UserSettings = await response.json();
         setSettings(data);
+        // FIX: Ensure themeName/themeMode default correctly if null from DB
         setThemeName(data.themeName || 'default');
         setThemeMode(data.themeMode || 'dark');
       } else {
@@ -100,6 +103,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
   }, [user, getIdToken]);
 
   const saveSettingsToDB = useCallback(async (partialSettings: Partial<UserSettings>) => {
+    // ... (existing implementation)
     if (!user) return;
     try {
       const token = await getIdToken();
@@ -118,18 +122,23 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
 
   const updateSettings = useCallback(async (partialSettings: Partial<UserSettings>) => {
     // 1. Update local state
-    setSettings(prev => prev ? ({ ...prev, ...partialSettings }) : null);
+    setSettings(prev => {
+        if (!prev) return null;
+        const newSettings = { ...prev, ...partialSettings };
+        
+        // Ensure state updates only happen if values actually change
+        if (partialSettings.themeName && partialSettings.themeName !== prev.themeName) setThemeName(partialSettings.themeName);
+        if (partialSettings.themeMode && partialSettings.themeMode !== prev.themeMode) setThemeMode(partialSettings.themeMode);
 
-    // 2. Update theme state if relevant
-    if (partialSettings.themeName) setThemeName(partialSettings.themeName);
-    if (partialSettings.themeMode) setThemeMode(partialSettings.themeMode);
+        return newSettings;
+    });
 
     // 3. Persist to database
     await saveSettingsToDB(partialSettings);
   }, [saveSettingsToDB]);
 
 
-  // --- Theme Controls ---
+  // --- Theme Controls (Same as before) ---
 
   const handleSetTheme = useCallback((name: string) => {
     setThemeName(name);
@@ -156,9 +165,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({ children }) => {
     }
   }, [user, authLoading, fetchSettings]);
 
-  // 2. Apply theme to body
+  // 2. Apply theme to body (CRITICAL FIX: This needs to apply the class name)
   useEffect(() => {
-    document.body.setAttribute('data-theme', currentTheme);
+    if (document.body) {
+         document.body.setAttribute('data-theme', currentTheme);
+    }
   }, [currentTheme]);
 
 

@@ -1759,6 +1759,8 @@ body {
     background: transparent !important; /* Use container background, not code background */
     min-width: 100%; /* Important for horizontal scrolling */
     box-sizing: border-box;
+    /* FIX: Force content not to wrap for horizontal scrolling */
+    white-space: pre !important; /* <-- ADD THIS LINE */
 }
 
 /* Inline code */

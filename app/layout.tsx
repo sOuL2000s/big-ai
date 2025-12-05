@@ -2,6 +2,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { AuthProvider } from '@/components/providers/AuthProvider';
+import { ThemeProvider } from '@/components/providers/ThemeContext'; // NEW IMPORT
 
 
 export const metadata: Metadata = {
@@ -14,11 +15,14 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Theme is applied via CSS variables and the ThemeProvider context
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`antialiased`}> 
         <AuthProvider>
-          {children}
+          <ThemeProvider> {/* Wrap children with ThemeProvider */}
+            {children}
+          </ThemeProvider>
         </AuthProvider>
       </body>
     </html>

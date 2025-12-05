@@ -24,19 +24,30 @@ export interface Conversation {
     updatedAt: Date | number;
     title: string;
     messages: ChatMessage[];
-    // NEW: User settings configuration for this chat session
     model?: string;
     systemPrompt?: string;
 }
 
-// NEW: Global User Settings for the Settings Panel
+// NEW: Prompt Template structure
+export interface PromptTemplate {
+    id: string;
+    name: string;
+    content: string;
+    model?: string;
+}
+
+// Global User Settings
 export interface UserSettings {
     userId: string;
     globalModel: string;
     globalSystemPrompt: string;
+    themeName: string; // NEW
+    themeMode: 'light' | 'dark'; // NEW
+    apiKey?: string | null; // NEW: Stored Gemini API Key
+    templates?: PromptTemplate[]; // NEW: Stored templates
 }
 
-// --- START FIX: Multimodal Gemini Types ---
+// --- Gemini Types ---
 export interface TextPart {
     text: string;
 }
@@ -50,7 +61,5 @@ export interface InlineDataPart {
 
 export interface GeminiContent {
     role: 'user' | 'model';
-    // Part can be text or inline data (multimodal)
     parts: (TextPart | InlineDataPart)[]; 
 }
-// --- END FIX: Multimodal Gemini Types ---

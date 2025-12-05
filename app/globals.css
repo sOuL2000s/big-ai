@@ -1,37 +1,256 @@
+/* app/globals.css */
 @import "tailwindcss";
 
+/*
+ * --- Global Default Variables ---
+ */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  --bg-chat: #f9fafb; /* Light gray background for chat area */
+  --bg-primary: #f3f4f6;
+  --bg-secondary: #ffffff;
+  --text-primary: #1f2937;
+  --text-secondary: #4b5563;
+  --border-color: #e5e7eb;
+  --card-bg: #ffffff;
+  --header-bg: #f9fafb;
+  --accent-primary: #2563eb; /* blue-600 */
+  --accent-primary-hover: #1d4ed8; /* blue-700 */
+  --accent-secondary: #fcd34d; /* amber-300 */
+  --accent-error: #ef4444; /* red-500 */
+  --accent-success: #22c55e; /* green-500 */
+  --user-bubble-bg: #bfdbfe; /* blue-200 */
+  --user-bubble-text: #1e40af; /* blue-700 */
+  --ai-bubble-bg: #f3f4f6; /* gray-100 */
+  --ai-bubble-text: #374151; /* gray-700 */
+  --sidebar-bg: #ffffff;
+  --sidebar-border: #e5e7eb;
+  --sidebar-item-hover: #f3f4f6;
+  --loader-dot-color: var(--accent-primary);
+  --code-block-bg: #f5f7fa;
+  --code-block-header-bg: #e8ebf0;
+  --code-block-border: #e2e4e8;
+  --conversation-indicator: var(--accent-primary);
+}
+
+/*
+ * --- Default Dark Mode (Fallback/Original) ---
+ */
+[data-theme$="-dark"] {
+  :root {
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #171717;
+    --text-primary: #e5e7eb;
+    --text-secondary: #a1a1aa;
+    --border-color: #2d3748;
+    --card-bg: #1f2937;
+    --header-bg: #1f2937;
+    --accent-primary: #60a5fa; /* blue-400 */
+    --accent-primary-hover: #3b82f6; /* blue-500 */
+    --accent-secondary: #fcd34d; /* amber-300 */
+    --accent-error: #f87171; /* red-400 */
+    --accent-success: #4ade80; /* green-400 */
+    --user-bubble-bg: #1e3a8a; /* blue-800 */
+    --user-bubble-text: #e0f2fe; /* blue-100 */
+    --ai-bubble-bg: #374151; /* gray-700 */
+    --ai-bubble-text: #f9fafb; /* gray-50 */
+    --sidebar-bg: #0a0a0a;
+    --sidebar-border: #2d3748;
+    --sidebar-item-hover: #171717;
+    --code-block-bg: #1f2937;
+    --code-block-header-bg: #171717;
+    --code-block-border: #2d3748;
+    --code-block-border: #2d3748;
+  }
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --bg-chat: #1f2937; /* Dark gray background for chat area */
+    --bg-primary: #0a0a0a;
+    --bg-secondary: #171717;
+    --text-primary: #e5e7eb;
+    --text-secondary: #a1a1aa;
+    --border-color: #2d3748;
+    --card-bg: #1f2937;
+    --header-bg: #1f2937;
+    --accent-primary: #60a5fa; /* blue-400 */
+    --accent-primary-hover: #3b82f6; /* blue-500 */
+    --accent-secondary: #fcd34d; /* amber-300 */
+    --accent-error: #f87171; /* red-400 */
+    --accent-success: #4ade80; /* green-400 */
+    --user-bubble-bg: #1e3a8a; /* blue-800 */
+    --user-bubble-text: #e0f2fe; /* blue-100 */
+    --ai-bubble-bg: #374151; /* gray-700 */
+    --ai-bubble-text: #f9fafb; /* gray-50 */
+    --sidebar-bg: #0a0a0a;
+    --sidebar-border: #2d3748;
+    --sidebar-item-hover: #171717;
+    --code-block-bg: #1f2937;
+    --code-block-header-bg: #171717;
+    --code-block-border: #2d3748;
   }
 }
 
-body {
-  /* Use the dark-mode ready colors for the main layout */
-  background: var(--background); 
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-  height: 100vh; /* Ensure full screen height */
-  overflow: hidden; /* Prevent body scroll */
+/*
+* These themes rely on the 'data-theme' attribute being set on the body.
+*/
+
+/* Celestial Horizon Theme: Dark Mode */
+[data-theme="celestial-horizon-dark"] {
+    --bg-primary: #0D1117;
+    --bg-secondary: #161B22;
+    --text-primary: #C9D1D9;
+    --text-secondary: #8B949E;
+    --border-color: #30363D;
+    --card-bg: #1F2633;
+    --header-bg: #161B22;
+    --accent-primary: #58A6FF;
+    --accent-primary-hover: #388BF2;
+    --user-bubble-bg: #253B64;
+    --user-bubble-text: #E0F2FE;
+    --ai-bubble-bg: #1F2633;
+    --ai-bubble-text: #C9D1D9;
+    --sidebar-bg: #161B22;
+    --sidebar-border: #30363D;
+    --sidebar-item-hover: #1F2633;
+    --code-block-bg: #1F2633;
+    --code-block-header-bg: #161B22;
+    --code-block-border: #30363D;
+    --conversation-indicator: #58A6FF;
 }
 
-/* Optional: Add basic scrollbar styling for better UX */
+/* Cyberpunk Theme: Dark Mode */
+[data-theme="cyberpunk-dark"] {
+    --bg-primary: #000000;
+    --bg-secondary: #1A0F24;
+    --text-primary: #00FFFF;
+    --text-secondary: #A08AB2;
+    --border-color: #3A1D4D;
+    --card-bg: #1A0F24;
+    --header-bg: #0A050F;
+    --accent-primary: #00FFFF;
+    --accent-primary-hover: #00CED1;
+    --accent-secondary: #FF1493;
+    --user-bubble-bg: #3A204D;
+    --user-bubble-text: #E0E0E0;
+    --ai-bubble-bg: #100814;
+    --ai-bubble-text: #E0E0E0;
+    --sidebar-bg: #000000;
+    --sidebar-border: #3A1D4D;
+    --sidebar-item-hover: #1A0F24;
+    --code-block-bg: #100814;
+    --code-block-header-bg: #20102A;
+    --code-block-border: #3A1D4D;
+    --conversation-indicator: #00FFFF;
+}
+
+/* Nordic Theme: Dark Mode */
+[data-theme="nord-dark"] {
+    --bg-primary: #000000;
+    --bg-secondary: #2E3440;
+    --text-primary: #88C0D0;
+    --text-secondary: #ECEFF4;
+    --border-color: #4C566A;
+    --card-bg: #2E3440;
+    --header-bg: #000000;
+    --accent-primary: #88C0D0;
+    --accent-primary-hover: #81A1C1;
+    --accent-secondary: #B48EAD;
+    --user-bubble-bg: #4C566A;
+    --user-bubble-text: #D8DEE9;
+    --ai-bubble-bg: #1A1D23;
+    --ai-bubble-text: #D8DEE9;
+    --sidebar-bg: #000000;
+    --sidebar-border: #4C566A;
+    --sidebar-item-hover: #2E3440;
+    --code-block-bg: #1A1D23;
+    --code-block-header-bg: #242933;
+    --code-block-border: #4C566A;
+    --conversation-indicator: #88C0D0;
+}
+
+
+/* --- Base Application Styles --- */
+body {
+  background: var(--bg-primary); 
+  color: var(--text-primary);
+  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  height: 100vh;
+  overflow: hidden;
+  transition: background-color 0.6s ease, color 0.6s ease;
+}
+
+/* Custom scrollbar styling */
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(156, 163, 175, 0.5); /* gray-400 */
+  background: color-mix(in srgb, var(--accent-primary) 50%, transparent); 
   border-radius: 4px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: var(--bg-primary);
+}
+
+/* Markdown and Code Styling Overrides */
+
+/* Code block container */
+.message-content pre {
+    background-color: var(--code-block-bg) !important;
+    border: 1px solid var(--code-block-border) !important;
+    border-radius: 0.5rem !important;
+    margin-top: 1rem !important;
+    margin-bottom: 1rem !important;
+    padding: 0 !important;
+    overflow-x: auto;
+}
+
+/* Code block header */
+.code-block-header {
+    background-color: var(--code-block-header-bg);
+    color: var(--text-secondary);
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid var(--code-block-border);
+    font-size: 0.85em;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+}
+
+/* Code content inside pre */
+.message-content pre code {
+    color: var(--text-primary);
+    display: block;
+    padding: 1rem !important;
+    background: none !important;
+}
+
+/* Inline code */
+.message-content code:not(pre > code) {
+    background-color: color-mix(in srgb, var(--accent-primary) 15%, transparent) !important;
+    border-radius: 0.25rem;
+    padding: 0.2em 0.4em;
+    font-size: 0.9em;
+    color: var(--accent-primary) !important;
+}
+
+/* Styling for button when Speech Recognition is active */
+.voice-input-active {
+    background-color: var(--accent-error) !important;
+    animation: pulse-red 1s infinite cubic-bezier(0.4, 0, 0.6, 1);
+}
+@keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent-error) 70%, transparent); }
+    50% { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent-error) 0%, transparent); }
+}
+
+/* User Bubble Styles (Ensure they use the variables) */
+.chat-message.user {
+    background-color: var(--user-bubble-bg);
+    color: var(--user-bubble-text);
+}
+
+/* AI Bubble Styles (Ensure they use the variables) */
+.chat-message.model {
+    background-color: var(--ai-bubble-bg);
+    color: var(--ai-bubble-text);
+    border: 1px solid var(--border-color);
 }

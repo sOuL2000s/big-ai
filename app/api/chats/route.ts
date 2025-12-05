@@ -2,6 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db, getAuthId } from '@/lib/firebaseAdmin';
 import { Conversation } from '@/types/chat';
+import { deleteAllUserConversations } from '@/lib/history'; // Server-side import
 
 export const runtime = 'nodejs';
 
@@ -37,5 +38,24 @@ export async function GET(req: NextRequest) {
     } catch (error) {
         console.error('Error fetching chat list:', error);
         return NextResponse.json({ error: 'Failed to retrieve conversation list' }, { status: 500 });
+    }
+}
+
+/**
+ * Deletes all conversations for the current user.
+ */
+export async function DELETE(req: NextRequest) {
+    const userId = await getAuthId(req);
+    if (!userId) {
+        return NextResponse.json({ error: 'Unauthorized: Missing Authentication' }, { status: 401 });
+    }
+    
+    try {
+        await deleteAllUserConversations(userId);
+        return NextResponse.json({ message: 'All conversations deleted successfully' });
+
+    } catch (error) {
+        console.error('Error deleting chat list:', error);
+        return NextResponse.json({ error: 'Failed to delete conversations' }, { status: 500 });
     }
 }

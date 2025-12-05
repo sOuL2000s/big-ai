@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthId } from '@/lib/firebaseAdmin';
 import { getSettings, saveSettings } from '@/lib/settings';
-import { UserSettings } from '@/types/chat';
+import { UserSettings, PromptTemplate } from '@/types/chat';
 
 export const runtime = 'nodejs';
 
@@ -15,6 +15,8 @@ export async function GET(req: NextRequest) {
 
     try {
         const settings = await getSettings(userId);
+        // Ensure sensitive info (API Key) is only returned if explicitly requested or handled carefully.
+        // For simplicity, we return the full settings object here as it's authenticated.
         return NextResponse.json(settings);
     } catch (error) {
         console.error('API GET Settings Error:', error);
@@ -32,7 +34,7 @@ export async function POST(req: NextRequest) {
     try {
         const body: Partial<UserSettings> = await req.json();
         
-        // Use the saveSettings logic from lib/settings
+        // Use the saveSettings logic from lib/settings, which handles merging
         await saveSettings(userId, body);
 
         return NextResponse.json({ message: 'Settings saved successfully' });

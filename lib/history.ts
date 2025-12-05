@@ -30,11 +30,10 @@ function serializeMessage(message: ChatMessage): FirestoreMessage {
         id: message.id,
         text: message.text,
         role: message.role,
-        timestamp: message.timestamp instanceof Date ? message.timestamp.getTime() : message.timestamp,
+        timestamp: message.timestamp instanceof Date ? message.timestamp.getTime() : (typeof message.timestamp === 'number' ? message.timestamp : Date.now()),
     };
     
-    // CRITICAL FIX: Only include the 'files' field if files exist, 
-    // as Firestore forbids storing 'undefined'.
+    // CRITICAL: Only include the 'files' field if files exist
     if (message.files && message.files.length > 0) {
         serialized.files = message.files;
     }
@@ -100,19 +99,18 @@ export async function createConversation(
         files: files.length > 0 ? files : undefined,
     };
     
-    // Use the helper to correctly serialize the message
     const serializedUserMessage = serializeMessage(userMessage);
 
+    // Initial conversation object for Firestore
     const newConversation = {
         id: chatId,
         userId,
         createdAt: now,
         updatedAt: now,
         title: generateTitle(firstMessage), 
-        messages: [serializedUserMessage], // Use serialized message
+        messages: [serializedUserMessage], 
         model: model || 'gemini-2.5-flash-preview-09-2025', 
-        // Only include systemPrompt if it's explicitly set (or remove it from the object if undefined)
-        ...(systemPrompt && { systemPrompt: systemPrompt }),
+        ...(systemPrompt && { systemPrompt: systemPrompt }), // Only include if defined
     };
 
     await db.collection(CONVERSATIONS_COLLECTION).doc(chatId).set(newConversation);
@@ -138,7 +136,7 @@ export async function updateConversation(
     isFirstExchange: boolean = false
 ): Promise<void> {
     
-    // First, verify access (optional, but good practice if not done upstream)
+    // First, verify access (Essential Security Check)
     const docRef = db.collection(CONVERSATIONS_COLLECTION).doc(chatId);
     const doc = await docRef.get();
     if (!doc.exists || doc.data()?.userId !== userId) {
@@ -162,7 +160,6 @@ export async function updateConversation(
         timestamp: now,
     };
 
-    // Serialize messages for Firestore
     const serializedUserMessage = serializeMessage(userMessage);
     const serializedModelMessage = serializeMessage(modelMessage);
 
@@ -172,14 +169,15 @@ export async function updateConversation(
     };
 
     if (isFirstExchange) {
-        // If it was the first exchange, we ensure the title is updated
         updateData.title = generateTitle(userText);
     }
     
     await docRef.update(updateData);
 }
 
-// New function to delete all chats for a user
+/**
+ * Deletes all chats for a user. (Used by the new DELETE /api/chats route)
+ */
 export async function deleteAllUserConversations(userId: string): Promise<void> {
     const batch = db.batch();
     const snapshot = await db.collection(CONVERSATIONS_COLLECTION)

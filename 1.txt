@@ -224,6 +224,10 @@ websiet link : https://big-ai-chatbot.netlify.app/
 /* app/globals.css */
 @import "tailwindcss";
 
+/* Import PrismJS themes */
+/* The dark theme import was in ChatBubble.tsx, moving it here ensures it applies globally */
+@import 'prismjs/themes/prism-tomorrow.css'; /* Using 'tomorrow' for a modern, sleek dark look */
+
 /*
  * --- Global Default Variables (Small AI v2 Default Light) ---
  */
@@ -1936,15 +1940,24 @@ body {
 
 /* Markdown and Code Styling Overrides */
 
-/* Code block container */
-.message-content pre {
-    /* Ensure no padding on the PRE itself, the padding goes on the CODE element */
+/* Code block wrapper (created by custom renderer) */
+.code-block-container {
     background-color: var(--code-block-bg) !important;
     border: 1px solid var(--code-block-border) !important;
     border-radius: 0.5rem !important;
     margin-top: 1rem !important;
     margin-bottom: 1rem !important;
-    padding: 0 !important; 
+    overflow: hidden; /* Contains children border radius */
+}
+
+/* Code block container (standard markdown pre tag) */
+.message-content pre {
+    /* Remove default markdown styles from PRE */
+    background-color: var(--code-block-bg) !important;
+    border: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    border-radius: 0 !important;
     overflow-x: auto; /* FIX: Enable horizontal scroll */
 }
 
@@ -1955,16 +1968,20 @@ body {
     padding: 0.5rem 1rem;
     border-bottom: 1px solid var(--code-block-border);
     font-size: 0.85em;
-    border-top-left-radius: 0.5rem;
-    border-top-right-radius: 0.5rem;
+    display: flex; /* Ensure button aligns */
+    justify-content: space-between;
+    align-items: center;
 }
 
-/* Code content inside pre */
+/* Code content inside pre (Prism.js applies most styling here) */
 .message-content pre code {
-    color: var(--text-primary);
+    /* Override Prism's default padding/margin/background/text settings */
+    color: var(--text-primary); /* Use theme color for text */
     display: block;
     padding: 1rem !important; /* Padding for the code content */
-    background: none !important;
+    background: transparent !important; /* Use container background, not code background */
+    min-width: 100%; /* Important for horizontal scrolling */
+    box-sizing: border-box;
 }
 
 /* Inline code */
@@ -2919,7 +2936,7 @@ import { ChatMessage, FileAttachment } from '@/types/chat';
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
 import Prism from 'prismjs';
-import 'prismjs/themes/prism-dark.css'; 
+// Removed: import 'prismjs/themes/prism-dark.css'; // Now imported in globals.css for global application
 
 // Import specific Prism languages needed
 import 'prismjs/components/prism-javascript';
@@ -2937,6 +2954,11 @@ let isSpeaking = false;
 let currentUtterance: SpeechSynthesisUtterance | null = null;
 let currentButtonRef: React.MutableRefObject<HTMLButtonElement | null> | null = null;
 
+const SPEAK_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>`;
+const PAUSE_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+const COPY_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>`;
+const CHECK_ICON = `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+
 const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonElement | null>) => {
     if (!window.speechSynthesis) return console.error('Speech synthesis not supported.');
 
@@ -2948,8 +2970,7 @@ const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonE
     // Reset icon on the previously speaking button, if applicable
     if (currentButtonRef && currentButtonRef.current) {
         const iconSpan = currentButtonRef.current.querySelector('[data-icon="tts"]');
-        // Reset to Speak icon (volume-2 equivalent)
-        if (iconSpan) iconSpan.innerHTML = `<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>`;
+        if (iconSpan) iconSpan.innerHTML = SPEAK_ICON;
     }
 
     const utterance = new SpeechSynthesisUtterance(text);
@@ -2960,16 +2981,14 @@ const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonE
         currentUtterance = utterance;
         currentButtonRef = buttonRef;
         const iconSpan = buttonRef.current?.querySelector('[data-icon="tts"]');
-        // Change to Pause icon (stop circle equivalent)
-        if (iconSpan) iconSpan.innerHTML = `<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`; 
+        if (iconSpan) iconSpan.innerHTML = PAUSE_ICON;
     };
     utterance.onend = () => {
         isSpeaking = false;
         currentUtterance = null;
         currentButtonRef = null;
         const iconSpan = buttonRef.current?.querySelector('[data-icon="tts"]');
-        // Reset to Speak icon
-        if (iconSpan) iconSpan.innerHTML = `<svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>`; 
+        if (iconSpan) iconSpan.innerHTML = SPEAK_ICON;
     };
     utterance.onerror = (event) => {
         console.error('Speech synthesis error:', event.error);
@@ -3010,14 +3029,14 @@ renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped
             <button type="button" class="copy-button p-1 rounded transition flex items-center gap-1 text-xs" 
                 data-code="${encodeURIComponent(unescapedCode)}" 
                 style="color: var(--text-secondary); padding: 0.25rem 0.5rem;">
-                <span data-icon="clipboard">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
-                </span>
+                <span data-icon="clipboard" style="color: var(--text-secondary);">${COPY_ICON}</span>
                 <span data-text="Copy">Copy</span>
             </button>
         </div>
     `;
-
+    
+    // We wrap the standard <pre> tag in the .code-block-container defined in CSS
+    // The inner <pre><code> is where Prism.js applies its magic
     return `
         <div class="code-block-container" data-lang="${language}">
             ${header}
@@ -3088,12 +3107,12 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                         const textSpan = button.querySelector('[data-text]');
                         
                         // Checkmark icon
-                        if (iconSpan) iconSpan.innerHTML = `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+                        if (iconSpan) iconSpan.innerHTML = CHECK_ICON;
                         if (textSpan) textSpan.textContent = "Copied!";
 
                         setTimeout(() => {
                             // Clipboard icon
-                            if (iconSpan) iconSpan.innerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>`;
+                            if (iconSpan) iconSpan.innerHTML = COPY_ICON;
                             if (textSpan) textSpan.textContent = "Copy";
                         }, 2000);
                     }).catch(err => {
@@ -3125,18 +3144,24 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
         navigator.clipboard.writeText(message.text)
             .then(() => {
                  // Provide visual feedback by temporarily changing the icon
-                 const iconSpan = copyButtonRef.current?.querySelector('svg');
-                 if (iconSpan && copyButtonRef.current) {
-                     // Checkmark icon
-                     copyButtonRef.current.style.color = 'var(--accent-success)';
-                     iconSpan.outerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
+                 if (copyButtonRef.current) {
+                     const iconSpan = copyButtonRef.current.querySelector('svg');
+                     if (iconSpan) {
+                         // Use innerHTML update for reliability
+                         iconSpan.outerHTML = CHECK_ICON;
+                     }
                      
+                     // Temporarily set the color for the entire button/icon
+                     copyButtonRef.current.style.color = 'var(--accent-success)';
+
                      setTimeout(() => {
-                         // Clipboard icon
                          if (copyButtonRef.current) {
                              copyButtonRef.current.style.color = 'var(--text-secondary)';
+                             const resetIconSpan = copyButtonRef.current.querySelector('svg');
+                             if (resetIconSpan) {
+                                  resetIconSpan.outerHTML = COPY_ICON;
+                             }
                          }
-                         iconSpan.outerHTML = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>`;
                      }, 2000);
                  }
             })
@@ -3160,7 +3185,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                             />
                         ) : (
                             // File icon placeholder
-                            <svg className="w-8 h-8" style={{color: 'var(--accent-secondary)'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM17 17H7m10-4H7m4-4H7"></path></svg>
+                            <svg className="w-8 h-8 shrink-0" style={{color: 'var(--accent-secondary)'}} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM17 17H7m10-4H7m4-4H7"></path></svg>
                         )}
                         <span className="text-xs truncate w-full text-center mt-1" style={{color: 'var(--text-secondary)'}}>
                             {file.filename}
@@ -3220,10 +3245,11 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                             ref={copyButtonRef}
                             onClick={handleCopyText} 
                             title="Copy Message"
-                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)]"
+                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" // Added flex classes
                             style={{color: 'var(--text-secondary)'}}
                         >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
+                            {/* FIX: Explicitly set stroke and color for SVG consistency */}
+                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
                         </button>
 
                         {/* Dictate Button (Only when not pending) */}
@@ -3232,12 +3258,13 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                                 ref={dictateButtonRef}
                                 onClick={() => toggleSpeech(message.text, dictateButtonRef)}
                                 title="Dictate Message (TTS)"
-                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)]"
+                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" // Added flex classes
                                 style={{color: 'var(--text-secondary)'}}
                             >
-                                <span data-icon="tts">
+                                <span data-icon="tts" className='flex items-center justify-center'>
                                     {/* Default Dictate Icon */}
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
+                                    {/* FIX: Explicitly set stroke and color for SVG consistency */}
+                                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
                                 </span>
                             </button>
                         )}
@@ -5583,24 +5610,6 @@ export { app };
 
 --- END FILE: utils\firebase.ts ---
 
--------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------
 
-i need a horizontal scrollbar for codeblocks having long lines of code.
-i want the code blocks to look better, sleek and modern just like the image i shared.
-i want the voice input to work.
-i want to fix this error. (## Error Type
-Console Error
-
-## Error Message
-Speech recognition error: {}
-
-
-    at createConsoleError (file://D:/72 projects of python/big-ai/.next/dev/static/chunks/node_modules_next_dist_7a8122d0._.js:2189:71)
-    at handleConsoleError (file://D:/72 projects of python/big-ai/.next/dev/static/chunks/node_modules_next_dist_7a8122d0._.js:2970:54)
-    at console.error (file://D:/72 projects of python/big-ai/.next/dev/static/chunks/node_modules_next_dist_7a8122d0._.js:3114:57)
-    at useSpeechRecognition.useEffect (file://D:/72 projects of python/big-ai/.next/dev/static/chunks/_0c9af878._.js:538:29)
-
-Next.js version: 16.0.7 (Turbopack)
-)
-
-send me all the ready to go codes after taking care of all the issues.
+Even though the overflow x is auto, the horizontal scroll is not coming. So that problem is persistent. So I want that to be fixed. Another thing is that the copy button on the code blocks and the dictate button on each and every chat is not good looking. They are not looking good and the icon on them is not looking good. And the voice input is not working and the conversation mode is also not working because the voice input is not working. Some of the icons in the website seems to be broken. I mean out of shape. Why could that be happening? please find the core of the reason. And tell me why this website could misbehave. What are the points that may push it to behave in this way? I want to include another thing here, that is the metrics code, the metrics code theme that is there. Some buttons on the sidebar are all green, so look out to that as well, because the text I'm not showing at all, it's completely green. So why is it happening that way? These fix that. And yeah, these are the issues that I have currently. And after you have fixed everything, please do send me all the ready to go codes. Because after I get the codes from you, I won't be editing them one by one. I will just take your codes, copy them, and paste them at their appropriate places in their appropriate files. So that's it. Send me the ready to go codes.

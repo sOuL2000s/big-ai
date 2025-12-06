@@ -2,11 +2,12 @@
 @import "tailwindcss";
 
 /* Import PrismJS themes */
-/* The dark theme import was in ChatBubble.tsx, moving it here ensures it applies globally */
 @import 'prismjs/themes/prism-tomorrow.css'; /* Using 'tomorrow' for a modern, sleek dark look */
 
 /*
- * --- Global Default Variables (Small AI v2 Default Light) ---
+ * ===================================================================
+ * --- 1. CORE DEFAULT VARIABLES (BASE FALLBACK - Light Mode) ---
+ * ===================================================================
  */
 :root {
   --bg-primary: #f3f4f6;
@@ -15,7 +16,7 @@
   --text-secondary: #4b5563;
   --border-color: #e5e7eb;
   --card-bg: #ffffff;
-  --card-border: #e5e7eb; /* NEW */
+  --card-border: #e5e7eb;
   --header-bg: #f9fafb;
   --accent-primary: #2563eb; /* blue-600 */
   --accent-primary-hover: #1d4ed8; /* blue-700 */
@@ -34,47 +35,48 @@
   --code-block-header-bg: #e8ebf0;
   --code-block-border: #e2e4e8;
   --conversation-indicator: var(--accent-primary);
-  --main-chat-window-bg: rgba(255, 255, 255, 0.8); /* NEW */
-  --conversation-bg: rgba(255, 255, 255, 0.95); /* NEW */
-  --conversation-text: #1f2937; /* NEW */
+  --main-chat-window-bg: rgba(255, 255, 255, 0.8);
+  --conversation-bg: rgba(255, 255, 255, 0.95);
+  --conversation-text: #1f2937;
 }
 
 /*
- * --- Default Dark Mode (Fallback/Original) ---
+ * --- Default Dark Mode (System & Fallback) ---
+ * Applies if data-theme ends in -dark OR if system preference is dark.
  */
 [data-theme$="-dark"] {
-  :root {
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #171717;
-    --text-primary: #e5e7eb;
-    --text-secondary: #a1a1aa;
-    --border-color: #2d3748;
-    --card-bg: #1f2937;
-    --card-border: #2d3748;
-    --header-bg: #1f2937;
-    --accent-primary: #60a5fa; /* blue-400 */
-    --accent-primary-hover: #3b82f6; /* blue-500 */
-    --accent-secondary: #fcd34d; /* amber-300 */
-    --accent-error: #f87171; /* red-400 */
-    --accent-success: #4ade80; /* green-400 */
-    --user-bubble-bg: #1e3a8a; /* blue-800 */
-    --user-bubble-text: #e0f2fe; /* blue-100 */
-    --ai-bubble-bg: #374151; /* gray-700 */
-    --ai-bubble-text: #f9fafb; /* gray-50 */
-    --sidebar-bg: #0a0a0a;
-    --sidebar-border: #2d3748;
-    --sidebar-item-hover: #171717;
-    --code-block-bg: #1f2937;
-    --code-block-header-bg: #171717;
-    --code-block-border: #2d3748;
-    --main-chat-window-bg: rgba(19, 19, 26, 0.9);
-    --conversation-bg: rgba(19, 19, 26, 0.95);
-    --conversation-text: #e5e7eb;
-    --conversation-indicator: #818cf8;
-  }
+  /* This block should apply specifically to the element with the data-theme attribute */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #171717;
+  --text-primary: #e5e7eb;
+  --text-secondary: #a1a1aa;
+  --border-color: #2d3748;
+  --card-bg: #1f2937;
+  --card-border: #2d3748;
+  --header-bg: #1f2937;
+  --accent-primary: #60a5fa;
+  --accent-primary-hover: #3b82f6;
+  --accent-secondary: #fcd34d;
+  --accent-error: #f87171;
+  --accent-success: #4ade80;
+  --user-bubble-bg: #1e3a8a;
+  --user-bubble-text: #e0f2fe;
+  --ai-bubble-bg: #374151;
+  --ai-bubble-text: #f9fafb;
+  --sidebar-bg: #0a0a0a;
+  --sidebar-border: #2d3748;
+  --sidebar-item-hover: #171717;
+  --code-block-bg: #1f2937;
+  --code-block-header-bg: #171717;
+  --code-block-border: #2d3748;
+  --main-chat-window-bg: rgba(19, 19, 26, 0.9);
+  --conversation-bg: rgba(19, 19, 26, 0.95);
+  --conversation-text: #e5e7eb;
+  --conversation-indicator: #818cf8;
 }
 
 @media (prefers-color-scheme: dark) {
+  /* This ensures system dark mode preference is respected when data-theme is not set */
   :root {
     --bg-primary: #0a0a0a;
     --bg-secondary: #171717;
@@ -84,15 +86,15 @@
     --card-bg: #1f2937;
     --card-border: #2d3748;
     --header-bg: #1f2937;
-    --accent-primary: #60a5fa; /* blue-400 */
-    --accent-primary-hover: #3b82f6; /* blue-500 */
-    --accent-secondary: #fcd34d; /* amber-300 */
-    --accent-error: #f87171; /* red-400 */
-    --accent-success: #4ade80; /* green-400 */
-    --user-bubble-bg: #1e3a8a; /* blue-800 */
-    --user-bubble-text: #e0f2fe; /* blue-100 */
-    --ai-bubble-bg: #374151; /* gray-700 */
-    --ai-bubble-text: #f9fafb; /* gray-50 */
+    --accent-primary: #60a5fa;
+    --accent-primary-hover: #3b82f6;
+    --accent-secondary: #fcd34d;
+    --accent-error: #f87171;
+    --accent-success: #4ade80;
+    --user-bubble-bg: #1e3a8a;
+    --user-bubble-text: #e0f2fe;
+    --ai-bubble-bg: #374151;
+    --ai-bubble-text: #f9fafb;
     --sidebar-bg: #0a0a0a;
     --sidebar-border: #2d3748;
     --sidebar-item-hover: #171717;
@@ -106,8 +108,77 @@
   }
 }
 
-/* --- MERGED THEMES FROM PART 2 START --- */
-/* Celestial Horizon Theme: Dark Mode (Existing, standardized) */
+/*
+ * ===================================================================
+ * --- 2. EXPLICIT THEME DEFINITIONS (Overrides Defaults) ---
+ * ===================================================================
+ */
+
+/* Default Theme: Light Mode */
+[data-theme="default-light"] {
+    --bg-primary: #f3f4f6;
+    --bg-secondary: #ffffff;
+    --text-primary: #1f2937;
+    --text-secondary: #4b5563;
+    --border-color: #e5e7eb;
+    --card-bg: #ffffff;
+    --card-border: #e5e7eb;
+    --header-bg: #f9fafb;
+    --accent-primary: #6366f1;
+    --accent-primary-hover: #4f46e5;
+    --accent-secondary: #22d3ee;
+    --accent-error: #ef4444;
+    --accent-success: #22c55e;
+    --user-bubble-bg: #e0f2fe;
+    --user-bubble-text: #1e40af;
+    --ai-bubble-bg: #f3f4f6;
+    --ai-bubble-text: #374151;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e5e7eb;
+    --sidebar-item-hover: #f3f4f6;
+    --loader-dot-color: var(--accent-primary);
+    --main-chat-window-bg: rgba(255, 255, 255, 0.8);
+    --conversation-bg: rgba(255, 255, 255, 0.95);
+    --conversation-text: #1f2937;
+    --conversation-indicator: #6366f1;
+    --code-block-bg: #f5f7fa;
+    --code-block-header-bg: #e8ebf0;
+    --code-block-border: #e2e4e8;
+}
+
+/* Default Theme: Dark Mode */
+[data-theme="default-dark"] {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #13131a;
+    --text-primary: #e5e7eb;
+    --text-secondary: #a1a1aa;
+    --border-color: #2d3748;
+    --card-bg: #13131a;
+    --card-border: #2d3748;
+    --header-bg: #1f2937;
+    --accent-primary: #818cf8;
+    --accent-primary-hover: #6366f1;
+    --accent-secondary: #67e8f9;
+    --accent-error: #f87171;
+    --accent-success: #4ade80;
+    --user-bubble-bg: #1a237e;
+    --user-bubble-text: #e0e7ff;
+    --ai-bubble-bg: #2d3748;
+    --ai-bubble-text: #f9fafb;
+    --sidebar-bg: #13131a;
+    --sidebar-border: #2d3748;
+    --sidebar-item-hover: #1f2937;
+    --loader-dot-color: var(--accent-primary);
+    --main-chat-window-bg: rgba(19, 19, 26, 0.9);
+    --conversation-bg: rgba(19, 19, 26, 0.95);
+    --conversation-text: #e5e7eb;
+    --conversation-indicator: #818cf8;
+    --code-block-bg: #1f2937;
+    --code-block-header-bg: #13131a;
+    --code-block-border: #2d3748;
+}
+
+/* Celestial Horizon Theme: Dark Mode */
 [data-theme="celestial-horizon-dark"] {
     --bg-primary: #0D1117;
     --bg-secondary: #161B22;
@@ -129,13 +200,14 @@
     --sidebar-bg: #161B22;
     --sidebar-border: #30363D;
     --sidebar-item-hover: #1F2633;
-    --code-block-bg: #1F2633;
-    --code-block-header-bg: #161B22;
-    --code-block-border: #30363D;
-    --conversation-indicator: #58A6FF;
+    --loader-dot-color: var(--accent-primary);
     --main-chat-window-bg: rgba(22, 27, 34, 0.9);
     --conversation-bg: rgba(22, 27, 34, 0.95);
     --conversation-text: #C9D1D9;
+    --conversation-indicator: #58A6FF;
+    --code-block-bg: #1F2633;
+    --code-block-header-bg: #161B22;
+    --code-block-border: #30363D;
 }
 
 /* Celestial Horizon Theme: Light Mode */
@@ -1002,7 +1074,7 @@
     --code-block-border: #CFD8DC;
 }
 
-/* Cyberpunk Theme: Dark Mode (Existing, standardized) */
+/* Cyberpunk Theme: Dark Mode */
 [data-theme="cyberpunk-dark"] {
     --bg-primary: #000000;
     --bg-secondary: #1A0F24;
@@ -1074,7 +1146,7 @@
     --card-bg: #0A0A0A;
     --card-border: #004000;
     --header-bg: #000000;
-    --accent-primary: #FF0000;
+    --accent-primary: #00FF00;
     --accent-primary-hover: #00CC00;
     --accent-secondary: #00FFFF;
     --accent-error: #FF0000;
@@ -1312,7 +1384,7 @@
     --code-block-border: #C0C0B8;
 }
 
-/* Nord Theme (Existing, standardized) */
+/* Nord Theme */
 [data-theme="nord-dark"] {
     --bg-primary: #000000;
     --bg-secondary: #2E3440;
@@ -1690,9 +1762,56 @@
     --code-block-border: #E2E8F0;
 }
 
-/* --- MERGED THEMES FROM PART 2 END --- */
 
-/* --- Base Application Styles --- */
+/*
+ * ===================================================================
+ * --- 3. THEME-SPECIFIC BACKGROUNDS AND ANIMATIONS (BODY STYLES) ---
+ * ===================================================================
+ * These cannot be variable declarations and must be applied directly
+ * to the body element using the data-theme selector.
+ */
+
+/* Clear background image for B&W themes */
+body[data-theme^="darkest-bw"] {
+    background-image: none !important;
+}
+
+/* Cosmic Nexus Dark */
+body[data-theme="cosmic-nexus-dark"] {
+    background-image: radial-gradient(circle at 15% 15%, rgba(0,245,255,0.08) 0%, transparent 25%),
+                      radial-gradient(circle at 85% 85%, rgba(212,0,255,0.08) 0%, transparent 25%),
+                      url('data:image/svg+xml;utf8,<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="smallGrid" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M 16 0 L 0 0 L 0 16" fill="none" stroke="rgba(0,245,255,0.05)" stroke-width="0.5"/></pattern><pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse"><rect width="80" height="80" fill="url(%23smallGrid)"/><path d="M 80 0 L 0 0 L 0 80" fill="none" stroke="rgba(0,245,255,0.08)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)"/></svg>');
+    background-size: cover, cover, auto;
+    background-blend-mode: overlay, overlay, multiply;
+}
+
+/* Starship Minimal Dark */
+body[data-theme="starship-minimal-dark"] {
+    background-image: url('data:image/svg+xml;utf8,<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(47,129,247,0.08)" stroke-width="0.5"/></pattern><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><rect width="50" height="50" fill="url(%23smallGrid)"/><path d="M 50 0 L 0 0 L 0 50" fill="none" stroke="rgba(47,129,247,0.12)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)"/></svg>');
+    background-size: cover;
+    background-blend-mode: overlay;
+}
+
+/* Offbeat Cosmic Pastels Theme: Dark Mode (with animation) */
+@keyframes pastel-nebula-drift {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+}
+body[data-theme="offbeat-cosmic-dark"] {
+    background-image: radial-gradient(circle at 20% 80%, rgba(199,128,255,0.1) 0%, transparent 40%),
+                      radial-gradient(circle at 80% 20%, rgba(92,225,230,0.1) 0%, transparent 40%),
+                      linear-gradient(135deg, rgba(255,180,233,0.05) 0%, transparent 50%, rgba(199,128,255,0.05) 100%);
+    background-size: cover;
+    background-blend-mode: soft-light;
+    animation: pastel-nebula-drift 25s infinite alternate ease-in-out;
+}
+
+
+/*
+ * ===================================================================
+ * --- 4. BASE APPLICATION STYLES (Using Variables) ---
+ * ===================================================================
+ */
 body {
   background: var(--bg-primary); 
   color: var(--text-primary);
@@ -1760,7 +1879,7 @@ body {
     min-width: 100%; /* Important for horizontal scrolling */
     box-sizing: border-box;
     /* FIX: Force content not to wrap for horizontal scrolling */
-    white-space: pre !important; /* <-- ADD THIS LINE */
+    white-space: pre !important; 
     max-width: 1000px;
 }
 

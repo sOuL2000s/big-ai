@@ -1761,6 +1761,7 @@ body {
     box-sizing: border-box;
     /* FIX: Force content not to wrap for horizontal scrolling */
     white-space: pre !important; /* <-- ADD THIS LINE */
+    max-width: 1000px;
 }
 
 /* Inline code */

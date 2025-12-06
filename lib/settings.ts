@@ -13,6 +13,7 @@ const DEFAULT_SETTINGS: UserSettings = {
     themeMode: 'dark', // NEW
     apiKey: null, // NEW
     templates: [], // NEW
+    streamingEnabled: true, // <-- UPDATED DEFAULT
 }
 
 /**
@@ -33,6 +34,7 @@ export async function getSettings(userId: string): Promise<UserSettings> {
             themeName: storedSettings.themeName || 'default',
             templates: storedSettings.templates || [],
             apiKey: storedSettings.apiKey || null,
+            streamingEnabled: storedSettings.streamingEnabled ?? true, // <-- Handle potential undefined/null
         };
     }
 
@@ -58,6 +60,7 @@ export async function saveSettings(userId: string, settings: Partial<UserSetting
     if (settings.themeMode !== undefined) updatePayload.themeMode = settings.themeMode;
     if (settings.apiKey !== undefined) updatePayload.apiKey = settings.apiKey;
     if (settings.templates !== undefined) updatePayload.templates = settings.templates;
+    if (settings.streamingEnabled !== undefined) updatePayload.streamingEnabled = settings.streamingEnabled; // <-- NEW
     
     await docRef.set(updatePayload, { merge: true });
 }

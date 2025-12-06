@@ -225,11 +225,12 @@ websiet link : https://big-ai-chatbot.netlify.app/
 @import "tailwindcss";
 
 /* Import PrismJS themes */
-/* The dark theme import was in ChatBubble.tsx, moving it here ensures it applies globally */
 @import 'prismjs/themes/prism-tomorrow.css'; /* Using 'tomorrow' for a modern, sleek dark look */
 
 /*
- * --- Global Default Variables (Small AI v2 Default Light) ---
+ * ===================================================================
+ * --- 1. CORE DEFAULT VARIABLES (BASE FALLBACK - Light Mode) ---
+ * ===================================================================
  */
 :root {
   --bg-primary: #f3f4f6;
@@ -238,7 +239,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
   --text-secondary: #4b5563;
   --border-color: #e5e7eb;
   --card-bg: #ffffff;
-  --card-border: #e5e7eb; /* NEW */
+  --card-border: #e5e7eb;
   --header-bg: #f9fafb;
   --accent-primary: #2563eb; /* blue-600 */
   --accent-primary-hover: #1d4ed8; /* blue-700 */
@@ -257,47 +258,48 @@ websiet link : https://big-ai-chatbot.netlify.app/
   --code-block-header-bg: #e8ebf0;
   --code-block-border: #e2e4e8;
   --conversation-indicator: var(--accent-primary);
-  --main-chat-window-bg: rgba(255, 255, 255, 0.8); /* NEW */
-  --conversation-bg: rgba(255, 255, 255, 0.95); /* NEW */
-  --conversation-text: #1f2937; /* NEW */
+  --main-chat-window-bg: rgba(255, 255, 255, 0.8);
+  --conversation-bg: rgba(255, 255, 255, 0.95);
+  --conversation-text: #1f2937;
 }
 
 /*
- * --- Default Dark Mode (Fallback/Original) ---
+ * --- Default Dark Mode (System & Fallback) ---
+ * Applies if data-theme ends in -dark OR if system preference is dark.
  */
 [data-theme$="-dark"] {
-  :root {
-    --bg-primary: #0a0a0a;
-    --bg-secondary: #171717;
-    --text-primary: #e5e7eb;
-    --text-secondary: #a1a1aa;
-    --border-color: #2d3748;
-    --card-bg: #1f2937;
-    --card-border: #2d3748;
-    --header-bg: #1f2937;
-    --accent-primary: #60a5fa; /* blue-400 */
-    --accent-primary-hover: #3b82f6; /* blue-500 */
-    --accent-secondary: #fcd34d; /* amber-300 */
-    --accent-error: #f87171; /* red-400 */
-    --accent-success: #4ade80; /* green-400 */
-    --user-bubble-bg: #1e3a8a; /* blue-800 */
-    --user-bubble-text: #e0f2fe; /* blue-100 */
-    --ai-bubble-bg: #374151; /* gray-700 */
-    --ai-bubble-text: #f9fafb; /* gray-50 */
-    --sidebar-bg: #0a0a0a;
-    --sidebar-border: #2d3748;
-    --sidebar-item-hover: #171717;
-    --code-block-bg: #1f2937;
-    --code-block-header-bg: #171717;
-    --code-block-border: #2d3748;
-    --main-chat-window-bg: rgba(19, 19, 26, 0.9);
-    --conversation-bg: rgba(19, 19, 26, 0.95);
-    --conversation-text: #e5e7eb;
-    --conversation-indicator: #818cf8;
-  }
+  /* This block should apply specifically to the element with the data-theme attribute */
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #171717;
+  --text-primary: #e5e7eb;
+  --text-secondary: #a1a1aa;
+  --border-color: #2d3748;
+  --card-bg: #1f2937;
+  --card-border: #2d3748;
+  --header-bg: #1f2937;
+  --accent-primary: #60a5fa;
+  --accent-primary-hover: #3b82f6;
+  --accent-secondary: #fcd34d;
+  --accent-error: #f87171;
+  --accent-success: #4ade80;
+  --user-bubble-bg: #1e3a8a;
+  --user-bubble-text: #e0f2fe;
+  --ai-bubble-bg: #374151;
+  --ai-bubble-text: #f9fafb;
+  --sidebar-bg: #0a0a0a;
+  --sidebar-border: #2d3748;
+  --sidebar-item-hover: #171717;
+  --code-block-bg: #1f2937;
+  --code-block-header-bg: #171717;
+  --code-block-border: #2d3748;
+  --main-chat-window-bg: rgba(19, 19, 26, 0.9);
+  --conversation-bg: rgba(19, 19, 26, 0.95);
+  --conversation-text: #e5e7eb;
+  --conversation-indicator: #818cf8;
 }
 
 @media (prefers-color-scheme: dark) {
+  /* This ensures system dark mode preference is respected when data-theme is not set */
   :root {
     --bg-primary: #0a0a0a;
     --bg-secondary: #171717;
@@ -307,15 +309,15 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --card-bg: #1f2937;
     --card-border: #2d3748;
     --header-bg: #1f2937;
-    --accent-primary: #60a5fa; /* blue-400 */
-    --accent-primary-hover: #3b82f6; /* blue-500 */
-    --accent-secondary: #fcd34d; /* amber-300 */
-    --accent-error: #f87171; /* red-400 */
-    --accent-success: #4ade80; /* green-400 */
-    --user-bubble-bg: #1e3a8a; /* blue-800 */
-    --user-bubble-text: #e0f2fe; /* blue-100 */
-    --ai-bubble-bg: #374151; /* gray-700 */
-    --ai-bubble-text: #f9fafb; /* gray-50 */
+    --accent-primary: #60a5fa;
+    --accent-primary-hover: #3b82f6;
+    --accent-secondary: #fcd34d;
+    --accent-error: #f87171;
+    --accent-success: #4ade80;
+    --user-bubble-bg: #1e3a8a;
+    --user-bubble-text: #e0f2fe;
+    --ai-bubble-bg: #374151;
+    --ai-bubble-text: #f9fafb;
     --sidebar-bg: #0a0a0a;
     --sidebar-border: #2d3748;
     --sidebar-item-hover: #171717;
@@ -329,8 +331,77 @@ websiet link : https://big-ai-chatbot.netlify.app/
   }
 }
 
-/* --- MERGED THEMES FROM PART 2 START --- */
-/* Celestial Horizon Theme: Dark Mode (Existing, standardized) */
+/*
+ * ===================================================================
+ * --- 2. EXPLICIT THEME DEFINITIONS (Overrides Defaults) ---
+ * ===================================================================
+ */
+
+/* Default Theme: Light Mode */
+[data-theme="default-light"] {
+    --bg-primary: #f3f4f6;
+    --bg-secondary: #ffffff;
+    --text-primary: #1f2937;
+    --text-secondary: #4b5563;
+    --border-color: #e5e7eb;
+    --card-bg: #ffffff;
+    --card-border: #e5e7eb;
+    --header-bg: #f9fafb;
+    --accent-primary: #6366f1;
+    --accent-primary-hover: #4f46e5;
+    --accent-secondary: #22d3ee;
+    --accent-error: #ef4444;
+    --accent-success: #22c55e;
+    --user-bubble-bg: #e0f2fe;
+    --user-bubble-text: #1e40af;
+    --ai-bubble-bg: #f3f4f6;
+    --ai-bubble-text: #374151;
+    --sidebar-bg: #ffffff;
+    --sidebar-border: #e5e7eb;
+    --sidebar-item-hover: #f3f4f6;
+    --loader-dot-color: var(--accent-primary);
+    --main-chat-window-bg: rgba(255, 255, 255, 0.8);
+    --conversation-bg: rgba(255, 255, 255, 0.95);
+    --conversation-text: #1f2937;
+    --conversation-indicator: #6366f1;
+    --code-block-bg: #e8ebf0;
+    --code-block-header-bg: #e8ebf0;
+    --code-block-border: #e2e4e8;
+}
+
+/* Default Theme: Dark Mode */
+[data-theme="default-dark"] {
+    --bg-primary: #0a0a0f;
+    --bg-secondary: #13131a;
+    --text-primary: #e5e7eb;
+    --text-secondary: #a1a1aa;
+    --border-color: #2d3748;
+    --card-bg: #13131a;
+    --card-border: #2d3748;
+    --header-bg: #1f2937;
+    --accent-primary: #818cf8;
+    --accent-primary-hover: #6366f1;
+    --accent-secondary: #67e8f9;
+    --accent-error: #f87171;
+    --accent-success: #4ade80;
+    --user-bubble-bg: #1a237e;
+    --user-bubble-text: #e0e7ff;
+    --ai-bubble-bg: #2d3748;
+    --ai-bubble-text: #f9fafb;
+    --sidebar-bg: #13131a;
+    --sidebar-border: #2d3748;
+    --sidebar-item-hover: #1f2937;
+    --loader-dot-color: var(--accent-primary);
+    --main-chat-window-bg: rgba(19, 19, 26, 0.9);
+    --conversation-bg: rgba(19, 19, 26, 0.95);
+    --conversation-text: #e5e7eb;
+    --conversation-indicator: #818cf8;
+    --code-block-bg: #13131a;
+    --code-block-header-bg: #13131a;
+    --code-block-border: #2d3748;
+}
+
+/* Celestial Horizon Theme: Dark Mode */
 [data-theme="celestial-horizon-dark"] {
     --bg-primary: #0D1117;
     --bg-secondary: #161B22;
@@ -352,13 +423,14 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --sidebar-bg: #161B22;
     --sidebar-border: #30363D;
     --sidebar-item-hover: #1F2633;
-    --code-block-bg: #1F2633;
-    --code-block-header-bg: #161B22;
-    --code-block-border: #30363D;
-    --conversation-indicator: #58A6FF;
+    --loader-dot-color: var(--accent-primary);
     --main-chat-window-bg: rgba(22, 27, 34, 0.9);
     --conversation-bg: rgba(22, 27, 34, 0.95);
     --conversation-text: #C9D1D9;
+    --conversation-indicator: #58A6FF;
+    --code-block-bg: #161B22;
+    --code-block-header-bg: #161B22;
+    --code-block-border: #30363D;
 }
 
 /* Celestial Horizon Theme: Light Mode */
@@ -388,7 +460,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #2D3748;
     --conversation-indicator: #3B82F6;
-    --code-block-bg: #EBF4FF;
+    --code-block-bg: #EDF2F7;
     --code-block-header-bg: #EDF2F7;
     --code-block-border: #E2E8F0;
 }
@@ -420,7 +492,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(33, 54, 45, 0.95);
     --conversation-text: #e0f2e8;
     --conversation-indicator: #3cb878;
-    --code-block-bg: #34495e;
+    --code-block-bg: #2c493c;
     --code-block-header-bg: #2c493c;
     --code-block-border: #3f544c;
 }
@@ -452,7 +524,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #2d3f35;
     --conversation-indicator: #3cb878;
-    --code-block-bg: #e8f5e9;
+    --code-block-bg: #f5fcf9;
     --code-block-header-bg: #f5fcf9;
     --code-block-border: #dbeae5;
 }
@@ -484,7 +556,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(22, 28, 40, 0.95);
     --conversation-text: #e2e8f0;
     --conversation-indicator: #0ea5e9;
-    --code-block-bg: #2d3748;
+    --code-block-bg: #1f2a3a;
     --code-block-header-bg: #1f2a3a;
     --code-block-border: #2f3e52;
 }
@@ -516,7 +588,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #1e293b;
     --conversation-indicator: #0ea5e9;
-    --code-block-bg: #e0f2fe;
+    --code-block-bg: #f1f5f9;
     --code-block-header-bg: #f1f5f9;
     --code-block-border: #e0e7f2;
 }
@@ -548,7 +620,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(36, 36, 38, 0.95);
     --conversation-text: #F0F0F0;
     --conversation-indicator: #00BFFF;
-    --code-block-bg: #36454F;
+    --code-block-bg: #1A1A1D;
     --code-block-header-bg: #1A1A1D;
     --code-block-border: #38383B;
 }
@@ -580,7 +652,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #333333;
     --conversation-indicator: #1E90FF;
-    --code-block-bg: #E8F0F5;
+    --code-block-bg: #E8ECF2;
     --code-block-header-bg: #E8ECF2;
     --code-block-border: #DDE2E8;
 }
@@ -612,7 +684,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(78, 52, 46, 0.95);
     --conversation-text: #FBE9E7;
     --conversation-indicator: #D84315;
-    --code-block-bg: #5D4037;
+    --code-block-bg: #3E2723;
     --code-block-header-bg: #3E2723;
     --code-block-border: #5D4037;
 }
@@ -644,7 +716,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #4E342E;
     --conversation-indicator: #E65100;
-    --code-block-bg: #FBE9E7;
+    --code-block-bg: #F8EFE5;
     --code-block-header-bg: #F8EFE5;
     --code-block-border: #E6DCCD;
 }
@@ -676,7 +748,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(26, 0, 64, 0.95);
     --conversation-text: #E0FFFF;
     --conversation-indicator: #FF1493;
-    --code-block-bg: #2E0854;
+    --code-block-bg: #120033;
     --code-block-header-bg: #120033;
     --code-block-border: #2F004F;
 }
@@ -708,7 +780,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #330066;
     --conversation-indicator: #FF69B4;
-    --code-block-bg: #F3E5F5;
+    --code-block-bg: #F2E0FF;
     --code-block-header-bg: #F2E0FF;
     --code-block-border: #EBD9FC;
 }
@@ -740,7 +812,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(74, 78, 105, 0.95);
     --conversation-text: #DCDCDC;
     --conversation-indicator: #9B59B6;
-    --code-block-bg: #5D607E;
+    --code-block-bg: #373A50;
     --code-block-header-bg: #373A50;
     --code-block-border: #5D607E;
 }
@@ -772,7 +844,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #333333;
     --conversation-indicator: #8E44AD;
-    --code-block-bg: #EAE0F0;
+    --code-block-bg: #F5F5F5;
     --code-block-header-bg: #F5F5F5;
     --code-block-border: #EAEAEA;
 }
@@ -804,7 +876,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(30, 30, 30, 0.95);
     --conversation-text: #F0F0F0;
     --conversation-indicator: #BB86FC;
-    --code-block-bg: #2C2C2C;
+    --code-block-bg: #121212;
     --code-block-header-bg: #121212;
     --code-block-border: #333333;
 }
@@ -836,7 +908,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #2C2C2C;
     --conversation-indicator: #6200EE;
-    --code-block-bg: #E0E0E0;
+    --code-block-bg: #D0D0D0;
     --code-block-header-bg: #D0D0D0;
     --code-block-border: #C0C0C0;
 }
@@ -868,7 +940,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(44, 24, 64, 0.95);
     --conversation-text: #FCE8D8;
     --conversation-indicator: #FF5722;
-    --code-block-bg: #40265B;
+    --code-block-bg: #1A0E2A;
     --code-block-header-bg: #1A0E2A;
     --code-block-border: #40265B;
 }
@@ -900,7 +972,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #3E2723;
     --conversation-indicator: #FF8F00;
-    --code-block-bg: #FFF3E0;
+    --code-block-bg: #FFFBEA;
     --code-block-header-bg: #FFFBEA;
     --code-block-border: #FFE0B2;
 }
@@ -932,7 +1004,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(23, 42, 69, 0.95);
     --conversation-text: #E6F0FF;
     --conversation-indicator: #66CCCC;
-    --code-block-bg: #2F476D;
+    --code-block-bg: #0A192F;
     --code-block-header-bg: #0A192F;
     --code-block-border: #2F476D;
 }
@@ -964,7 +1036,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #2B4550;
     --conversation-indicator: #00BCD4;
-    --code-block-bg: #CCEEF0;
+    --code-block-bg: #E0F2F7;
     --code-block-header-bg: #E0F2F7;
     --code-block-border: #B2EBF2;
 }
@@ -996,7 +1068,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(61, 61, 61, 0.95);
     --conversation-text: #E0E0E0;
     --conversation-indicator: #A57C52;
-    --code-block-bg: #555555;
+    --code-block-bg: #2C2C2C;
     --code-block-header-bg: #2C2C2C;
     --code-block-border: #555555;
 }
@@ -1028,7 +1100,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #4A4A4A;
     --conversation-indicator: #8D6E63;
-    --code-block-bg: #EFEBE9;
+    --code-block-bg: #F5EFEB;
     --code-block-header-bg: #F5EFEB;
     --code-block-border: #E6E0D3;
 }
@@ -1060,7 +1132,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(31, 23, 49, 0.95);
     --conversation-text: #ECE4F7;
     --conversation-indicator: #9400D3;
-    --code-block-bg: #372A4F;
+    --code-block-bg: #110B1D;
     --code-block-header-bg: #110B1D;
     --code-block-border: #372A4F;
 }
@@ -1092,7 +1164,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #330066;
     --conversation-indicator: #8A2BE2;
-    --code-block-bg: #F0E6F8;
+    --code-block-bg: #F2E0FF;
     --code-block-header-bg: #F2E0FF;
     --code-block-border: #EBD9FC;
 }
@@ -1124,7 +1196,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: #000000;
     --conversation-text: #FFFFFF;
     --conversation-indicator: #FFFFFF;
-    --code-block-bg: #333333;
+    --code-block-bg: #0A0A0A;
     --code-block-header-bg: #0A0A0A;
     --code-block-border: #333333;
 }
@@ -1156,7 +1228,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: #FFFFFF;
     --conversation-text: #000000;
     --conversation-indicator: #000000;
-    --code-block-bg: #DDDDDD;
+    --code-block-bg: #F5F5F5;
     --code-block-header-bg: #F5F5F5;
     --code-block-border: #DDDDDD;
 }
@@ -1188,7 +1260,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(0, 0, 0, 0.95);
     --conversation-text: #00BCD4;
     --conversation-indicator: #00BCD4;
-    --code-block-bg: #1A1A1A;
+    --code-block-bg: #27272A;
     --code-block-header-bg: #27272A;
     --code-block-border: #3F3F46;
 }
@@ -1220,12 +1292,12 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #004D40;
     --conversation-indicator: #008C9D;
-    --code-block-bg: #F5F5F5;
+    --code-block-bg: #ECEFF1;
     --code-block-header-bg: #ECEFF1;
     --code-block-border: #CFD8DC;
 }
 
-/* Cyberpunk Theme: Dark Mode (Existing, standardized) */
+/* Cyberpunk Theme: Dark Mode */
 [data-theme="cyberpunk-dark"] {
     --bg-primary: #000000;
     --bg-secondary: #1A0F24;
@@ -1252,7 +1324,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(10, 5, 15, 0.95);
     --conversation-text: #00FFFF;
     --conversation-indicator: #00FFFF;
-    --code-block-bg: #100814;
+    --code-block-bg: #20102A;
     --code-block-header-bg: #20102A;
     --code-block-border: #3A1D4D;
 }
@@ -1282,7 +1354,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #2F4F4F;
     --conversation-indicator: #00CED1;
-    --code-block-bg: #E0FFFF;
+    --code-block-bg: #ADD8E6;
     --code-block-header-bg: #ADD8E6;
     --code-block-border: #87CEEB;
 }
@@ -1297,7 +1369,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --card-bg: #0A0A0A;
     --card-border: #004000;
     --header-bg: #000000;
-    --accent-primary: #FF0000;
+    --accent-primary: #017801;
     --accent-primary-hover: #00CC00;
     --accent-secondary: #00FFFF;
     --accent-error: #FF0000;
@@ -1314,7 +1386,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(0, 0, 0, 0.95);
     --conversation-text: #00FF00;
     --conversation-indicator: #00FF00;
-    --code-block-bg: #000A00;
+    --code-block-bg: #001000;
     --code-block-header-bg: #001000;
     --code-block-border: #002000;
 }
@@ -1344,7 +1416,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #202020;
     --conversation-indicator: #008000;
-    --code-block-bg: #F5FFF5;
+    --code-block-bg: #E0FFE0;
     --code-block-header-bg: #E0FFE0;
     --code-block-border: #C0D0C0;
 }
@@ -1376,7 +1448,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #586E75;
     --conversation-indicator: #2AA198;
-    --code-block-bg: #EEE8D5;
+    --code-block-bg: #FDF6E3;
     --code-block-header-bg: #FDF6E3;
     --code-block-border: #D0D0C0;
 }
@@ -1406,7 +1478,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(0, 43, 54, 0.95);
     --conversation-text: #FDF6E3;
     --conversation-indicator: #2AA198;
-    --code-block-bg: #073642;
+    --code-block-bg: #002B36;
     --code-block-header-bg: #002B36;
     --code-block-border: #586E75;
 }
@@ -1438,7 +1510,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(0, 0, 0, 0.95);
     --conversation-text: #F8F8F2;
     --conversation-indicator: #BD93F9;
-    --code-block-bg: #1A1C25;
+    --code-block-bg: #2F313E;
     --code-block-header-bg: #2F313E;
     --code-block-border: #44475A;
 }
@@ -1468,7 +1540,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #282A36;
     --conversation-indicator: #FF79C6;
-    --code-block-bg: #E8E8E0;
+    --code-block-bg: #D8D8D0;
     --code-block-header-bg: #D8D8D0;
     --code-block-border: #C2C2C0;
 }
@@ -1500,7 +1572,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(0, 0, 0, 0.95);
     --conversation-text: #FCFCFA;
     --conversation-indicator: #A6E22E;
-    --code-block-bg: #1A1A1A;
+    --code-block-bg: #27252A;
     --code-block-header-bg: #27252A;
     --code-block-border: #3F3C38;
 }
@@ -1530,12 +1602,12 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #30302E;
     --conversation-indicator: #F92672;
-    --code-block-bg: #EEEEEC;
+    --code-block-bg: #E0E0D8;
     --code-block-header-bg: #E0E0D8;
     --code-block-border: #C0C0B8;
 }
 
-/* Nord Theme (Existing, standardized) */
+/* Nord Theme */
 [data-theme="nord-dark"] {
     --bg-primary: #000000;
     --bg-secondary: #2E3440;
@@ -1562,7 +1634,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(0, 0, 0, 0.95);
     --conversation-text: #D8DEE9;
     --conversation-indicator: #88C0D0;
-    --code-block-bg: #1A1D23;
+    --code-block-bg: #242933;
     --code-block-header-bg: #242933;
     --code-block-border: #4C566A;
 }
@@ -1592,7 +1664,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #2E3440;
     --conversation-indicator: #5E81AC;
-    --code-block-bg: #DEE3EB;
+    --code-block-bg: #C0C7D1;
     --code-block-header-bg: #C0C7D1;
     --code-block-border: #B4BFCD;
 }
@@ -1624,7 +1696,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(0, 0, 0, 0.95);
     --conversation-text: #EBDBB2;
     --conversation-indicator: #83A598;
-    --code-block-bg: #1D2021;
+    --code-block-bg: #32302F;
     --code-block-header-bg: #32302F;
     --code-block-border: #504945;
 }
@@ -1654,7 +1726,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #3C3836;
     --conversation-indicator: #427B58;
-    --code-block-bg: #EBDBB2;
+    --code-block-bg: #D5C4A1;
     --code-block-header-bg: #D5C4A1;
     --code-block-border: #BDAEAA;
 }
@@ -1686,7 +1758,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(0, 0, 0, 0.95);
     --conversation-text: #CAD3F5;
     --conversation-indicator: #8BD5CA;
-    --code-block-bg: #1A1D2A;
+    --code-block-bg: #2E3243;
     --code-block-header-bg: #2E3243;
     --code-block-border: #494D64;
 }
@@ -1716,7 +1788,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.95);
     --conversation-text: #4C4F69;
     --conversation-indicator: #179299;
-    --code-block-bg: #EAECEF;
+    --code-block-bg: #D4D7E2;
     --code-block-header-bg: #D4D7E2;
     --code-block-border: #C8CDDD;
 }
@@ -1748,7 +1820,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(5, 5, 10, 0.95);
     --conversation-text: #E6E6E6;
     --conversation-indicator: #00F5FF;
-    --code-block-bg: #18052A;
+    --code-block-bg: #0A0A10;
     --code-block-header-bg: #0A0A10;
     --code-block-border: #2A2A3A;
 }
@@ -1780,7 +1852,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.9);
     --conversation-text: #1F2937;
     --conversation-indicator: #00CED1;
-    --code-block-bg: #F3F8FF;
+    --code-block-bg: #EAF0F8;
     --code-block-header-bg: #EAF0F8;
     --code-block-border: #E5E7EB;
 }
@@ -1812,7 +1884,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(13, 17, 23, 0.95);
     --conversation-text: #F0F6FC;
     --conversation-indicator: #2F81F7;
-    --code-block-bg: #21262D;
+    --code-block-bg: #161B22;
     --code-block-header-bg: #161B22;
     --code-block-border: #30363D;
 }
@@ -1844,7 +1916,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.9);
     --conversation-text: #2D3748;
     --conversation-indicator: #1E90FF;
-    --code-block-bg: #F3F8FF;
+    --code-block-bg: #EDF2F7;
     --code-block-header-bg: #EDF2F7;
     --code-block-border: #E2E8F0;
 }
@@ -1876,7 +1948,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(12, 15, 22, 0.95);
     --conversation-text: #FDFDFD;
     --conversation-indicator: #5CE1E6;
-    --code-block-bg: #2B1E40;
+    --code-block-bg: #1A1E2B;
     --code-block-header-bg: #1A1E2B;
     --code-block-border: #30354F;
 }
@@ -1908,14 +1980,61 @@ websiet link : https://big-ai-chatbot.netlify.app/
     --conversation-bg: rgba(255, 255, 255, 0.9);
     --conversation-text: #2D3748;
     --conversation-indicator: #00BCD4;
-    --code-block-bg: #E0FFFF;
+    --code-block-bg: #EEF8F8;
     --code-block-header-bg: #EEF8F8;
     --code-block-border: #E2E8F0;
 }
 
-/* --- MERGED THEMES FROM PART 2 END --- */
 
-/* --- Base Application Styles --- */
+/*
+ * ===================================================================
+ * --- 3. THEME-SPECIFIC BACKGROUNDS AND ANIMATIONS (BODY STYLES) ---
+ * ===================================================================
+ * These cannot be variable declarations and must be applied directly
+ * to the body element using the data-theme selector.
+ */
+
+/* Clear background image for B&W themes */
+body[data-theme^="darkest-bw"] {
+    background-image: none !important;
+}
+
+/* Cosmic Nexus Dark */
+body[data-theme="cosmic-nexus-dark"] {
+    background-image: radial-gradient(circle at 15% 15%, rgba(0,245,255,0.08) 0%, transparent 25%),
+                      radial-gradient(circle at 85% 85%, rgba(212,0,255,0.08) 0%, transparent 25%),
+                      url('data:image/svg+xml;utf8,<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="smallGrid" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M 16 0 L 0 0 L 0 16" fill="none" stroke="rgba(0,245,255,0.05)" stroke-width="0.5"/></pattern><pattern id="grid" width="80" height="80" patternUnits="userSpaceOnUse"><rect width="80" height="80" fill="url(%23smallGrid)"/><path d="M 80 0 L 0 0 L 0 80" fill="none" stroke="rgba(0,245,255,0.08)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)"/></svg>');
+    background-size: cover, cover, auto;
+    background-blend-mode: overlay, overlay, multiply;
+}
+
+/* Starship Minimal Dark */
+body[data-theme="starship-minimal-dark"] {
+    background-image: url('data:image/svg+xml;utf8,<svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="smallGrid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 L 0 10" fill="none" stroke="rgba(47,129,247,0.08)" stroke-width="0.5"/></pattern><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><rect width="50" height="50" fill="url(%23smallGrid)"/><path d="M 50 0 L 0 0 L 0 50" fill="none" stroke="rgba(47,129,247,0.12)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)"/></svg>');
+    background-size: cover;
+    background-blend-mode: overlay;
+}
+
+/* Offbeat Cosmic Pastels Theme: Dark Mode (with animation) */
+@keyframes pastel-nebula-drift {
+    0% { background-position: 0% 0%; }
+    100% { background-position: 100% 100%; }
+}
+body[data-theme="offbeat-cosmic-dark"] {
+    background-image: radial-gradient(circle at 20% 80%, rgba(199,128,255,0.1) 0%, transparent 40%),
+                      radial-gradient(circle at 80% 20%, rgba(92,225,230,0.1) 0%, transparent 40%),
+                      linear-gradient(135deg, rgba(255,180,233,0.05) 0%, transparent 50%, rgba(199,128,255,0.05) 100%);
+    background-size: cover;
+    background-blend-mode: soft-light;
+    animation: pastel-nebula-drift 25s infinite alternate ease-in-out;
+}
+
+
+/*
+ * ===================================================================
+ * --- 4. BASE APPLICATION STYLES (Using Variables) ---
+ * ===================================================================
+ */
 body {
   background: var(--bg-primary); 
   color: var(--text-primary);
@@ -1983,7 +2102,8 @@ body {
     min-width: 100%; /* Important for horizontal scrolling */
     box-sizing: border-box;
     /* FIX: Force content not to wrap for horizontal scrolling */
-    white-space: pre !important; /* <-- ADD THIS LINE */
+    white-space: pre !important; 
+    max-width: 1000px;
 }
 
 /* Inline code */
@@ -5612,10 +5732,15 @@ export { app };
 
 --- END FILE: utils\firebase.ts ---
 
-------------------------------------------------------------
+---------------------------------------------------
 
-i need to fix the following: 
+to do list : 
 
-the message bubble color for some of the themes are same as the code block background color. please change slightly.
-i need that horizontal scroll for the code blocks enabled because even after doing all the css changes it's not happening, please find the reason and fix it.
-i need the voice input to work please it's not working at all.
+make this website fully responsive and be able to fit in any screen size.
+let the gemini api rename the chat depending on the chat's conversation context automatically.
+the message actions (copy/dictate) is not positioned properly fix that.
+fix the ai response appearance. i want a toggle button to let the user choose whether they want it to come all at once or like how right now it's coming. (currently it's coming like a typewriter)
+when the response appears like a typewriter then make it appear smoother but fast enough to have the same speed as it would've had if it came all at once.
+turn this website into a PWA so it could be installed on mobile phones.
+
+don't send me all the files, send me only the neccessary ones.

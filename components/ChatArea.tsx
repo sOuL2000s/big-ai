@@ -254,6 +254,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     
     // Check if the user's current settings include a system prompt to be passed to the API
     const globalSystemPrompt = settings?.globalSystemPrompt;
+    const streamingEnabled = settings?.streamingEnabled ?? true; // <-- Get streaming preference
     
     const userMessage: ChatMessage = {
       id: uuidvv4(),
@@ -317,15 +318,28 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
       const decoder = new TextDecoder();
       let accumulatedText = '';
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // CONDITIONAL STREAMING LOGIC
+      if (streamingEnabled) {
+          // Streaming/Typing mode (Read chunk by chunk and update UI)
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-        const chunk = decoder.decode(value);
-        accumulatedText += chunk;
-        updateBotStreamingMessage(chunk); 
+            const chunk = decoder.decode(value);
+            accumulatedText += chunk;
+            updateBotStreamingMessage(chunk); 
+          }
+      } else {
+          // Instant response mode (Wait for stream to finish reading entirely)
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            accumulatedText += decoder.decode(value);
+          }
+          // Display the final accumulated text all at once
+          updateBotStreamingMessage(accumulatedText);
       }
-
+      
       finalizeBotMessage(accumulatedText);
 
     } catch (error) {

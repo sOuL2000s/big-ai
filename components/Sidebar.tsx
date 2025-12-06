@@ -147,6 +147,12 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
     const handleModeToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
         setMode(e.target.checked ? 'dark' : 'light');
     };
+    
+    // START NEW HANDLER
+    const handleStreamingToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+        updateSettings({ streamingEnabled: e.target.checked });
+    };
+    // END NEW HANDLER
 
 
     return (
@@ -317,6 +323,27 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                             ></span>
                         </label>
                     </div>
+
+                    {/* NEW: Streaming Toggle - Renamed Label */}
+                     <div className="flex items-center justify-between text-sm py-2">
+                         <span style={{color: 'var(--text-secondary)'}}>AI Response: {settings?.streamingEnabled ? 'Typing (Stream)' : 'Instant (Full)'}</span>
+                         <label className="relative inline-block w-12 h-6">
+                            <input 
+                                type="checkbox" 
+                                checked={settings?.streamingEnabled ?? true} 
+                                onChange={handleStreamingToggle} 
+                                className="opacity-0 w-0 h-0" 
+                            />
+                            <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
+                                style={{
+                                    backgroundColor: (settings?.streamingEnabled ?? true) ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                    '--tw-translate-x': (settings?.streamingEnabled ?? true) ? '24px' : '0',
+                                    transition: 'background-color 0.4s, transform 0.4s'
+                                } as React.CSSProperties}
+                            ></span>
+                        </label>
+                    </div>
+
 
                     {/* Data Management Buttons */}
                     <div className="pt-3 border-t space-y-2" style={{borderColor: 'var(--sidebar-border)'}}>

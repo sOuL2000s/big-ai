@@ -6,8 +6,8 @@ import { ChatMessage, Conversation, FileAttachment } from '@/types/chat';
 import ChatBubble from './ChatBubble'; 
 import { useAuth } from '@/components/providers/AuthProvider';
 import { v4 as uuidvv4 } from 'uuid';
-import { useTheme } from '@/components/providers/ThemeContext'; // NEW
-import useSpeechRecognition from '@/hooks/useSpeechRecognition'; // NEW HOOK (to be created)
+import { useTheme } from '@/components/providers/ThemeContext';
+import useSpeechRecognition from '@/hooks/useSpeechRecognition';
 
 const BOT_PENDING_ID = 'bot-pending';
 
@@ -15,12 +15,15 @@ interface ChatAreaProps {
     chatId: string | undefined;
     onChatIdChange: (newChatId: string) => void;
     onNewMessageSent: () => void; // Trigger sidebar refresh
-    onOpenConversationMode: () => void; // NEW
+    onOpenConversationMode: () => void;
+    // === NEW PROPS ===
+    onToggleSidebar: () => void;
+    isMobileView: boolean;
+    // =================
 }
 
 // Utility to convert file to Base64
 const fileToBase64 = (file: File): Promise<FileAttachment> => {
-    // ... (utility function remains the same as in part 1)
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
         reader.readAsDataURL(file);
@@ -43,7 +46,7 @@ const fileToBase64 = (file: File): Promise<FileAttachment> => {
 };
 
 
-export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onOpenConversationMode }: ChatAreaProps) {
+export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onOpenConversationMode, onToggleSidebar, isMobileView }: ChatAreaProps) {
   const { user, getIdToken } = useAuth();
   const { settings } = useTheme();
   
@@ -103,7 +106,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
   // --- History Loading Effect ---
   useEffect(() => {
-    // ... (History loading logic remains the same, using settings data for potential conversation config is done in the API route)
     if (!user) return;
 
     if (chatId) {
@@ -192,7 +194,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
   type FileEvent = ChangeEvent<HTMLInputElement> | ReactDragEvent<HTMLDivElement> | React.ClipboardEvent<HTMLTextAreaElement>;
   
   const handleFileSelect = (e: FileEvent) => {
-      // ... (file selection logic remains the same as in part 1)
       const selectedFiles: File[] = [];
   
       if ('clipboardData' in e) {
@@ -254,7 +255,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     
     // Check if the user's current settings include a system prompt to be passed to the API
     const globalSystemPrompt = settings?.globalSystemPrompt;
-    const streamingEnabled = settings?.streamingEnabled ?? true; // <-- Get streaming preference
+    const streamingEnabled = settings?.streamingEnabled ?? true; 
     
     const userMessage: ChatMessage = {
       id: uuidvv4(),
@@ -371,10 +372,25 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
   return (
     <div className="flex flex-col h-full w-full" style={{backgroundColor: 'var(--bg-primary)'}}>
       <header className="p-4 border-b shadow-sm flex justify-between items-center" style={{backgroundColor: 'var(--header-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}>
+        
+        {/* === MOBILE SIDEBAR TOGGLE BUTTON === */}
+        {isMobileView && (
+            <button
+                onClick={onToggleSidebar}
+                className="p-2 rounded-lg transition mr-2 md:hidden"
+                title="Toggle Sidebar"
+                disabled={isLoading || isHistoryLoading}
+                style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
+            >
+                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+            </button>
+        )}
+        {/* ================================== */}
+
         <h1 className="font-semibold truncate max-w-[calc(100%-80px)]">
             {chatId ? messages[0]?.text.substring(0, 50) + '...' : 'New Conversation'}
         </h1>
-        {/* NEW: Conversation Mode Button in Header */}
+        {/* Conversation Mode Button in Header */}
         <button
             onClick={onOpenConversationMode}
             className="p-2 rounded-lg transition"

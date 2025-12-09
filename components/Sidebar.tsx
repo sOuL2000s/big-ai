@@ -17,9 +17,12 @@ interface SidebarProps {
     currentChatId: string | undefined;
     onNewMessageSent: () => void; 
     onOpenConversationMode: () => void; 
+    isMobileOpen: boolean;
+    onCloseMobile: () => void;
+    isMobileView: boolean;
 }
 
-// Available Models list
+// Available Models list (Kept the same)
 const AVAILABLE_MODELS = [
     { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro' },
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
@@ -28,7 +31,7 @@ const AVAILABLE_MODELS = [
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
 ];
 
-export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent, onOpenConversationMode }: SidebarProps) {
+export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent, onOpenConversationMode, isMobileOpen, onCloseMobile, isMobileView }: SidebarProps) {
     const { user, signOut, getIdToken } = useAuth();
     const { themeName, themeMode, setMode, setTheme, settings, updateSettings, availableThemes } = useTheme();
     
@@ -67,7 +70,6 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
     const handleDeleteChat = async (chatIdToDelete: string) => {
         if (!user) return;
         
-        // Fetch title for confirmation message (optional, but nice UX)
         const chatToDelete = history.find(c => c.id === chatIdToDelete);
         const title = chatToDelete?.title || "this chat";
 
@@ -83,9 +85,9 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                     setHistory(prev => prev.filter(c => c.id !== chatIdToDelete));
                     
                     if (currentChatId === chatIdToDelete) {
-                        onSelectChat(undefined); // Switch to a new chat
+                        onSelectChat(undefined);
                     }
-                    onNewMessageSent(); // Force history refresh
+                    onNewMessageSent();
                 } else {
                     console.error("Failed to delete chat:", await response.json());
                     alert("Failed to delete chat. Check console.");
@@ -104,7 +106,6 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
     };
     
     const handleDeleteAllChats = async () => {
-        // ... (Existing implementation)
         if (!user) return;
         if (confirm("DANGER: Are you sure you want to permanently delete ALL your chat history? This cannot be undone.")) {
             try {
@@ -127,14 +128,11 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
     }
 
     const handleClearLocalStorage = () => {
-        // ... (Existing implementation)
         if (confirm('WARNING: Are you sure you want to clear all local settings (themes, model selection)? Your chat history (saved in the cloud) will NOT be affected, but you may need to re-login and re-select your preferred theme.')) {
             localStorage.clear(); 
             window.location.reload(); 
         }
     }
-    
-    // UI Event Handlers
     
     const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         updateSettings({ globalModel: e.target.value });
@@ -148,15 +146,23 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
         setMode(e.target.checked ? 'dark' : 'light');
     };
     
-    // START NEW HANDLER
     const handleStreamingToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
         updateSettings({ streamingEnabled: e.target.checked });
     };
-    // END NEW HANDLER
 
 
     return (
-        <div className="flex flex-col w-64 h-screen p-3 shadow-2xl relative" style={{backgroundColor: 'var(--sidebar-bg)', color: 'var(--text-primary)', borderColor: 'var(--sidebar-border)'}}>
+        // FIX: Use w-full only on mobile for full screen coverage, keep w-64 for desktop.
+        // Add shrink-0 to prevent flex shrinkage on desktop.
+        <div 
+            className={`
+                flex flex-col h-screen p-3 shadow-2xl shrink-0 transition-transform duration-300 ease-in-out
+                w-64 md:relative md:translate-x-0
+                ${isMobileView ? 'fixed z-30 inset-y-0 w-full max-w-[80%]' : ''} 
+                ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+            `} 
+            style={{backgroundColor: 'var(--sidebar-bg)', color: 'var(--text-primary)', borderRight: '1px solid var(--sidebar-border)'}}
+        >
             
             {isPromptManagerOpen && (
                 <PromptManager onClose={() => { setIsPromptManagerOpen(false); onNewMessageSent(); }} />
@@ -164,14 +170,23 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
             
             <div className="flex items-center justify-between pb-4 border-b mb-4" style={{borderColor: 'var(--sidebar-border)'}}>
                  <h2 className="text-xl font-bold flex items-center gap-2" style={{color: 'var(--text-primary)'}}>
-                    {/* Updated Branding Icon (Using a custom one, mimicking the Part 2 icon look) */}
                     <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M4.343 19.657l.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
                     Big AI
                 </h2>
+                
+                {/* Mobile Close Button */}
+                {isMobileView && (
+                    <button 
+                        onClick={onCloseMobile} 
+                        className="p-1 rounded-full hover:bg-[var(--sidebar-item-hover)]"
+                        style={{color: 'var(--text-primary)'}}
+                    >
+                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                )}
             </div>
             
             {/* New Chat Button */}
-            {/* ... (Existing New Chat Button) */}
             <button
                 onClick={handleNewChat}
                 className="w-full flex items-center justify-center p-3 rounded-xl font-semibold shadow-lg transition-colors mb-4"
@@ -270,7 +285,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                     {/* Quick Prompt/Template Access */}
                     <button 
                         className="w-full text-left text-sm p-2 rounded-lg transition"
-                        onClick={() => setIsPromptManagerOpen(true)}
+                        onClick={() => { setIsPromptManagerOpen(true); if(isMobileView) onCloseMobile(); }} // Close sidebar when opening manager
                         style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-secondary)'}}
                     >
                         <span className="font-semibold flex items-center gap-2">
@@ -324,7 +339,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                         </label>
                     </div>
 
-                    {/* NEW: Streaming Toggle - Renamed Label */}
+                    {/* Streaming Toggle - Renamed Label */}
                      <div className="flex items-center justify-between text-sm py-2">
                          <span style={{color: 'var(--text-secondary)'}}>AI Response: {settings?.streamingEnabled ? 'Typing (Stream)' : 'Instant (Full)'}</span>
                          <label className="relative inline-block w-12 h-6">

@@ -93,7 +93,7 @@ const renderer = new marked.Renderer();
 renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped?: boolean }): string => {
     const language = lang || 'plaintext';
     // Marked escapes HTML entities; we need to unescape for Prism to work correctly.
-    const unescapedCode = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    const unescapedCode = text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"').replace(/'/g, "'");
     
     const header = `
         <div class="code-block-header flex justify-between items-center">
@@ -301,14 +301,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                     />
 
                     {/* Message Actions (Copy/Dictate) */}
-                    <div className="absolute bottom-1 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg" 
+                    <div className="absolute z-10 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg" 
                         style={{
                             backgroundColor: 'var(--header-bg)', 
                             border: '1px solid var(--border-color)',
                             // Use ternary operator to position the action buttons correctly
                             right: isUser ? '10px' : 'auto',
                             left: isUser ? 'auto' : '10px',
-                            bottom: '10px',
+                            bottom: '-15px', // Adjusted to hang 15px below the bubble's bottom edge
                         }}
                     >
                         

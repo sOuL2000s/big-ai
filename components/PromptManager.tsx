@@ -151,7 +151,16 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
                 
                 {/* Status Message */}
                 {statusMessage && (
-                    <div className={`p-3 mb-4 text-sm rounded-lg text-center ${statusMessage.includes('saved') || statusMessage.includes('activated') ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                    <div 
+                        className={`p-3 mb-4 text-sm rounded-lg text-center font-medium`}
+                        style={{
+                            backgroundColor: 'var(--sidebar-item-hover)',
+                            color: statusMessage.includes('saved') || statusMessage.includes('activated') 
+                                ? 'var(--accent-success)' 
+                                : 'var(--accent-error)',
+                            border: `1px solid ${statusMessage.includes('saved') || statusMessage.includes('activated') ? 'var(--accent-success)' : 'var(--accent-error)'}`
+                        }}
+                    >
                         {statusMessage}
                     </div>
                 )}

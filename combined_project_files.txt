@@ -2067,6 +2067,7 @@ body {
     margin-top: 1rem !important;
     margin-bottom: 1rem !important;
     overflow: hidden; /* Contains children border radius */
+    max-width: 100%; /* FIX: Constrain the wrapper */
 }
 
 /* Code block container (standard markdown pre tag) */
@@ -2078,6 +2079,7 @@ body {
     padding: 0 !important;
     border-radius: 0 !important;
     overflow-x: auto; /* FIX: Enable horizontal scroll */
+    max-width: 100%; /* FIX: Ensure pre respects parent constraint */
 }
 
 /* Code block header */
@@ -2103,7 +2105,7 @@ body {
     box-sizing: border-box;
     /* FIX: Force content not to wrap for horizontal scrolling */
     white-space: pre !important; 
-    max-width: 1000px;
+    /* Removed redundant max-width: 1000px; */
 }
 
 /* Inline code */
@@ -2188,6 +2190,22 @@ import AuthGate from '@/components/ui/AuthGate';
 import ConversationModeOverlay from '@/components/ConversationModeOverlay';
 import { useTheme } from '@/components/providers/ThemeContext';
 
+// Helper function to determine initial mobile state
+const getInitialMobileState = () => {
+    if (typeof window === 'undefined') {
+        // Default to false (desktop mode) during SSR
+        return false;
+    }
+    return window.innerWidth < 768;
+};
+
+// Helper function to determine initial sidebar state
+const getInitialSidebarState = () => {
+    // If not mobile, sidebar should be open by default
+    return !getInitialMobileState();
+};
+
+
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
   const { loadingSettings } = useTheme();
@@ -2196,25 +2214,35 @@ export default function HomePage() {
   const [refreshSidebarToggle, setRefreshSidebarToggle] = useState(false);
   const [isConversationModeOpen, setIsConversationModeOpen] = useState(false);
   
-  // === NEW RESPONSIVENESS STATE ===
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default to CLOSED on mobile
-  const [isMobile, setIsMobile] = useState(false);
+  // === RESPONSIVENESS STATE ===
+  // FIX: Initialize state based on the initial check function
+  const [isMobile, setIsMobile] = useState(getInitialMobileState());
+  const [isSidebarOpen, setIsSidebarOpen] = useState(getInitialSidebarState()); 
 
-  // Effect to determine screen size and manage sidebar visibility default
+  // Effect to handle RENDER-TIME RESIZE events only
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768; 
-      setIsMobile(mobile);
-      if (!mobile) {
-        setIsSidebarOpen(true); // Always open sidebar on desktop
-      } else {
-        // If resized to mobile, close the sidebar unless it was already open manually
-        setIsSidebarOpen(false); 
+      
+      // Only call setIsMobile if the state actually changes (mobile/desktop boundary crossed)
+      setIsMobile(prevMobile => {
+          if (prevMobile !== mobile) {
+              return mobile;
+          }
+          return prevMobile;
+      });
+      
+      // Logic for desktop: if resized to desktop, ensure sidebar is open
+      if (window.innerWidth >= 768) {
+        setIsSidebarOpen(true); 
       }
+      // Note: We don't need to explicitly close on mobile resize here, 
+      // as the initial state already handles the default closed state, 
+      // and user input drives mobile collapse/expand.
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // Initial check
+    // Initial check is now handled by useState initializers, no need for handleResize() here.
 
     return () => window.removeEventListener('resize', handleResize);
   }, []); 
@@ -2224,6 +2252,7 @@ export default function HomePage() {
     setCurrentChatId(chatId);
     if (isConversationModeOpen) setIsConversationModeOpen(false);
     
+    // Close sidebar on mobile when a chat is selected
     if (isMobile) setIsSidebarOpen(false); 
   };
   
@@ -2241,11 +2270,25 @@ export default function HomePage() {
 
   // Main application view
   return (
-    // FIX: Ensure the main container is hidden overflow to prevent scroll issues
     <div className="flex h-screen overflow-hidden relative" style={{ backgroundColor: 'var(--bg-primary)' }}>
       
-      {/* 2. Main Chat Area - This needs to take up all space */}
-      {/* On desktop (md:), it takes remaining flex space. On mobile, it takes full width/height. */}
+      {/* 1. Sidebar */}
+      <Sidebar 
+        onSelectChat={handleSelectChat} 
+        currentChatId={currentChatId}
+        onNewMessageSent={handleNewMessageSent}
+        onOpenConversationMode={() => { 
+            setIsConversationModeOpen(true); 
+            if (isMobile) setIsSidebarOpen(false);
+        }} 
+        key={refreshSidebarToggle.toString()} 
+        
+        isSidebarOpen={isSidebarOpen} 
+        onCloseSidebar={() => setIsSidebarOpen(false)} 
+        isMobileView={isMobile}
+      />
+      
+      {/* 2. Main Chat Area */}
       <main className="flex-1 flex flex-col min-w-0 w-full h-full"> 
         <ChatArea 
           chatId={currentChatId}
@@ -2257,22 +2300,6 @@ export default function HomePage() {
           isMobileView={isMobile}
         />
       </main>
-      
-      {/* 1. Sidebar - Rendered on top of main content on mobile */}
-      <Sidebar 
-        onSelectChat={handleSelectChat} 
-        currentChatId={currentChatId}
-        onNewMessageSent={handleNewMessageSent}
-        onOpenConversationMode={() => { 
-            setIsConversationModeOpen(true); 
-            if (isMobile) setIsSidebarOpen(false);
-        }} 
-        key={refreshSidebarToggle.toString()} 
-        
-        isMobileOpen={isSidebarOpen}
-        onCloseMobile={() => setIsSidebarOpen(false)}
-        isMobileView={isMobile}
-      />
       
       {/* 3. Mobile Overlay Backdrop */}
       {isMobile && isSidebarOpen && (
@@ -2666,6 +2693,10 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // NEW STATE: Tracks if the current chat ID change was due to sending the first message.
+  const [isInitialExchange, setIsInitialExchange] = useState(false); 
+
 
   // NEW: Speech Recognition Hook Integration
   const { isListening, transcript, startListening, stopListening, recognitionSupported, resetTranscript } = useSpeechRecognition({ 
@@ -2674,12 +2705,10 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           resetTranscript();
       },
       onInterimTranscript: (interimTranscript) => {
-        // Use interim transcript for instant visual feedback
-        setInput(prev => (prev.split(' ')[0] + ' ' + interimTranscript).trim());
+        // We rely on the input state being updated by the hook
       },
       onStart: () => {
-          // Temporarily disable sending when listening starts
-          // We rely on the input state being updated by the hook
+          // No action needed here for this specific fix
       },
       onEnd: () => {
          // Focus on input after listening stops
@@ -2690,9 +2719,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
   // Combine hook transcript with input state
   useEffect(() => {
-    // If listening and transcript changes, we don't update input directly here, 
-    // the hook manages it via onFinalTranscript and onInterimTranscript handlers provided above.
-    // We update the placeholder dynamically based on listening state.
+    // Dynamic placeholder update
     if (inputRef.current) {
         inputRef.current.placeholder = isLoading 
             ? "Please wait..." 
@@ -2717,6 +2744,15 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     if (!user) return;
 
     if (chatId) {
+      
+      // FIX 1: Prevent clearing/fetching if this ID change was triggered by the first message being sent.
+      if (isInitialExchange) {
+        setIsInitialExchange(false); // Reset flag
+        setIsHistoryLoading(false);
+        // Do NOT fetch history, rely on current local state 
+        return; 
+      }
+        
       setIsHistoryLoading(true);
       setMessages([]); // Clear old messages
       
@@ -2751,7 +2787,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
       setAttachments([]); 
       setIsHistoryLoading(false);
     }
-  }, [chatId, user, getIdToken]);
+  }, [chatId, user, getIdToken, isInitialExchange]); // Add isInitialExchange to dependency array
 
   // --- Utility Functions ---
   const addMessage = useCallback((msg: ChatMessage) => {
@@ -2920,6 +2956,8 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
       
       const newChatId = response.headers.get('X-Chat-ID');
       if (newChatId && newChatId !== chatId) {
+          // FIX 2: Set flag before updating parent state
+          setIsInitialExchange(true); 
           onChatIdChange(newChatId); 
       }
 
@@ -2981,18 +3019,16 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     <div className="flex flex-col h-full w-full" style={{backgroundColor: 'var(--bg-primary)'}}>
       <header className="p-4 border-b shadow-sm flex justify-between items-center" style={{backgroundColor: 'var(--header-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}>
         
-        {/* === MOBILE SIDEBAR TOGGLE BUTTON === */}
-        {isMobileView && (
-            <button
-                onClick={onToggleSidebar}
-                className="p-2 rounded-lg transition mr-2 md:hidden"
-                title="Toggle Sidebar"
-                disabled={isLoading || isHistoryLoading}
-                style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
-            >
-                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
-            </button>
-        )}
+        {/* === SIDEBAR TOGGLE BUTTON (Visible on all screens now) === */}
+        <button
+            onClick={onToggleSidebar}
+            className="p-2 rounded-lg transition mr-2"
+            title="Toggle Sidebar"
+            disabled={isLoading || isHistoryLoading}
+            style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
+        >
+             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+        </button>
         {/* ================================== */}
 
         <h1 className="font-semibold truncate max-w-[calc(100%-80px)]">
@@ -3400,7 +3436,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                 
                 {/* Bubble Content */}
                 <div
-                    className={`p-3 rounded-xl shadow-md transition duration-300 ease-in-out break-words relative ${
+                    className={`p-3 rounded-xl shadow-md transition duration-300 ease-in-out break-words relative w-full ${
                         isUser
                             ? 'rounded-bl-none'
                             : 'rounded-tr-none border'
@@ -3465,7 +3501,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                 </div>
                 
                 {/* User Avatar / Role Indicator (User) */}
-                <div className={`p-2 rounded-full text-white ml-3 shrink-0 self-start ${isUser ? 'bg-gray-500' : 'hidden'}`} style={{backgroundColor: 'var(--text-primary)'}}>
+                <div 
+                    className={`p-2 rounded-full ml-3 shrink-0 self-start ${isUser ? '' : 'hidden'}`} 
+                    style={{
+                        // FIX: Use theme variables for dynamic contrast
+                        backgroundColor: 'var(--text-primary)', 
+                        color: 'var(--bg-primary)'
+                    }}
+                >
                     {isUser ? 'You' : ''}
                 </div>
             </div>
@@ -4327,8 +4370,8 @@ interface SidebarProps {
     currentChatId: string | undefined;
     onNewMessageSent: () => void; 
     onOpenConversationMode: () => void; 
-    isMobileOpen: boolean;
-    onCloseMobile: () => void;
+    isSidebarOpen: boolean; // Universal state for open/closed
+    onCloseSidebar: () => void; // Universal close handler
     isMobileView: boolean;
 }
 
@@ -4341,7 +4384,7 @@ const AVAILABLE_MODELS = [
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
 ];
 
-export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent, onOpenConversationMode, isMobileOpen, onCloseMobile, isMobileView }: SidebarProps) {
+export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent, onOpenConversationMode, isSidebarOpen, onCloseSidebar, isMobileView }: SidebarProps) {
     const { user, signOut, getIdToken } = useAuth();
     const { themeName, themeMode, setMode, setTheme, settings, updateSettings, availableThemes } = useTheme();
     
@@ -4462,252 +4505,255 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
 
 
     return (
-        // FIX: Use w-full only on mobile for full screen coverage, keep w-64 for desktop.
-        // Add shrink-0 to prevent flex shrinkage on desktop.
         <div 
             className={`
-                flex flex-col h-screen p-3 shadow-2xl shrink-0 transition-transform duration-300 ease-in-out
-                w-64 md:relative md:translate-x-0
-                ${isMobileView ? 'fixed z-30 inset-y-0 w-full max-w-[80%]' : ''} 
-                ${isMobileOpen ? 'translate-x-0' : '-translate-x-full'}
+                flex flex-col h-screen shadow-2xl shrink-0 transition-all duration-300 ease-in-out
+                ${isMobileView 
+                    ? `fixed z-30 inset-y-0 w-full max-w-[80%] p-3 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
+                    : isSidebarOpen ? 'w-64 relative translate-x-0 p-3' : 'w-0 p-0 overflow-hidden' // Desktop collapse logic
+                }
             `} 
-            style={{backgroundColor: 'var(--sidebar-bg)', color: 'var(--text-primary)', borderRight: '1px solid var(--sidebar-border)'}}
+            style={{backgroundColor: 'var(--sidebar-bg)', color: 'var(--text-primary)', borderRight: isSidebarOpen ? '1px solid var(--sidebar-border)' : 'none'}}
         >
             
             {isPromptManagerOpen && (
                 <PromptManager onClose={() => { setIsPromptManagerOpen(false); onNewMessageSent(); }} />
             )}
             
-            <div className="flex items-center justify-between pb-4 border-b mb-4" style={{borderColor: 'var(--sidebar-border)'}}>
-                 <h2 className="text-xl font-bold flex items-center gap-2" style={{color: 'var(--text-primary)'}}>
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M4.343 19.657l.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                    Big AI
-                </h2>
-                
-                {/* Mobile Close Button */}
-                {isMobileView && (
-                    <button 
-                        onClick={onCloseMobile} 
-                        className="p-1 rounded-full hover:bg-[var(--sidebar-item-hover)]"
-                        style={{color: 'var(--text-primary)'}}
-                    >
-                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                )}
-            </div>
+            {/* Only render inner content if sidebar is open, controlling opacity for smooth transition */}
+            <div className={`flex flex-col h-full w-full ${!isSidebarOpen && !isMobileView ? 'opacity-0' : 'opacity-100'} transition-opacity duration-100`}>
             
-            {/* New Chat Button */}
-            <button
-                onClick={handleNewChat}
-                className="w-full flex items-center justify-center p-3 rounded-xl font-semibold shadow-lg transition-colors mb-4"
-                style={{backgroundColor: 'var(--accent-primary)', color: 'var(--ai-bubble-text)'}} 
-            >
-                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path></svg> 
-                Start New Chat
-            </button>
-
-
-            {/* Conversation Mode Button */}
-             <button
-                onClick={onOpenConversationMode}
-                className="w-full flex items-center justify-center p-3 rounded-xl font-semibold transition-colors mb-4"
-                style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
-                title="Start Voice Conversation"
-            >
-                <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                Conversation Mode
-            </button>
-
-
-            {/* History List */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                <h3 className="text-sm font-semibold uppercase sticky top-0 py-1" style={{color: 'var(--text-secondary)', backgroundColor: 'var(--sidebar-bg)'}}>
-                    History ({history.length})
-                </h3>
-                {loading && <div className="text-sm p-3" style={{color: 'var(--text-secondary)'}}>Loading history...</div>}
-                
-                {history.length === 0 && !loading && (
-                    <div className="text-sm p-3" style={{color: 'var(--text-secondary)'}}>No history found.</div>
-                )}
-                
-                {history.map((chat) => (
-                    <div 
-                        key={chat.id}
-                        className={`group flex items-center justify-between p-3 rounded-lg text-sm transition duration-150 ${
-                            chat.id === currentChatId 
-                                ? 'font-semibold' 
-                                : 'hover:opacity-80'
-                        }`}
-                        style={{
-                            backgroundColor: chat.id === currentChatId ? 'var(--accent-primary)' : 'var(--bg-secondary)',
-                            color: chat.id === currentChatId ? 'var(--ai-bubble-text)' : 'var(--text-primary)',
-                            cursor: 'pointer'
-                        }}
-                        title={chat.title}
-                    >
-                        {/* Title Section (Clickable area to select chat) */}
-                        <button
-                            onClick={() => onSelectChat(chat.id)}
-                            className="flex items-center flex-1 min-w-0 pr-2 text-left"
-                            style={{ color: 'inherit', background: 'none', border: 'none', padding: 0 }}
-                        >
-                            <svg className="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4M12 4v16"></path></svg>
-                            <span className="truncate flex-1">
-                                {chat.title}
-                            </span>
-                        </button>
-                        
-                        {/* Delete Button (Visible on hover) */}
-                        <button
-                            onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.id); }}
-                            className={`p-1 rounded transition ml-2 shrink-0 opacity-0 group-hover:opacity-100`}
-                            title="Delete Chat"
-                            style={{ 
-                                color: chat.id === currentChatId ? 'var(--ai-bubble-text)' : 'var(--accent-error)',
-                                backgroundColor: chat.id === currentChatId ? 'var(--accent-primary-hover)' : 'transparent',
-                            }}
-                        >
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                        </button>
-                    </div>
-                ))}
-            </div>
-            
-            {/* Footer Area - Collapsible Settings and Auth */}
-            <div className="pt-4 border-t mt-4 space-y-2" style={{borderColor: 'var(--sidebar-border)'}}>
-                 
-                 {/* Settings Toggle Button */}
-                 <button 
-                    className="w-full flex items-center justify-between p-2 rounded-lg font-semibold transition"
-                    onClick={() => setIsSettingsCollapsed(prev => !prev)}
-                    style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)'}}
-                 >
-                    <span className="flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.333.9 2.456 2.456a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.942 1.543-.9 3.333-2.456 2.456a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.333-.9-2.456-2.456a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.942-1.543.9-3.333 2.456-2.456a1.724 1.724 0 002.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                        Settings
-                    </span>
-                    <svg className={`w-4 h-4 transition-transform ${isSettingsCollapsed ? 'transform rotate-0' : 'transform rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                </button>
-
-                {/* Collapsible Settings Content */}
-                <div className={`space-y-3 overflow-hidden transition-all duration-300 ${isSettingsCollapsed ? 'max-h-0' : 'max-h-[800px]'}`}>
-
-                    {/* Quick Prompt/Template Access */}
-                    <button 
-                        className="w-full text-left text-sm p-2 rounded-lg transition"
-                        onClick={() => { setIsPromptManagerOpen(true); if(isMobileView) onCloseMobile(); }} // Close sidebar when opening manager
-                        style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-secondary)'}}
-                    >
-                        <span className="font-semibold flex items-center gap-2">
-                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM17 17H7m10-4H7m4-4H7"></path></svg>
-                             Manage Prompts & API Key
-                        </span>
-                    </button>
-
-                    {/* Model Selector */}
-                    <div>
-                        <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>AI Model</label>
-                        <select
-                            value={settings?.globalModel || AVAILABLE_MODELS[0].id}
-                            onChange={handleModelChange}
-                            className="w-full p-2 rounded-lg border text-sm"
-                            style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
-                        >
-                            {AVAILABLE_MODELS.map(model => (
-                                <option key={model.id} value={model.id}>{model.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Theme Selector (Uses the expanded list from ThemeContext) */}
-                    <div>
-                        <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>Theme</label>
-                        <select
-                            value={themeName}
-                            onChange={handleThemeChange}
-                            className="w-full p-2 rounded-lg border text-sm"
-                            style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
-                        >
-                            {availableThemes.map(theme => (
-                                <option key={theme.id} value={theme.id}>{theme.name}</option>
-                            ))}
-                        </select>
-                    </div>
-
-                    {/* Dark/Light Mode Toggle */}
-                    <div className="flex items-center justify-between text-sm py-2">
-                         <span style={{color: 'var(--text-secondary)'}}>Dark Mode ({themeMode})</span>
-                         <label className="relative inline-block w-12 h-6">
-                            <input type="checkbox" checked={themeMode === 'dark'} onChange={handleModeToggle} className="opacity-0 w-0 h-0" />
-                            <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
-                                style={{
-                                    backgroundColor: themeMode === 'dark' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                    '--tw-translate-x': themeMode === 'dark' ? '24px' : '0',
-                                    transition: 'background-color 0.4s, transform 0.4s'
-                                } as React.CSSProperties}
-                            ></span>
-                        </label>
-                    </div>
-
-                    {/* Streaming Toggle - Renamed Label */}
-                     <div className="flex items-center justify-between text-sm py-2">
-                         <span style={{color: 'var(--text-secondary)'}}>AI Response: {settings?.streamingEnabled ? 'Typing (Stream)' : 'Instant (Full)'}</span>
-                         <label className="relative inline-block w-12 h-6">
-                            <input 
-                                type="checkbox" 
-                                checked={settings?.streamingEnabled ?? true} 
-                                onChange={handleStreamingToggle} 
-                                className="opacity-0 w-0 h-0" 
-                            />
-                            <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
-                                style={{
-                                    backgroundColor: (settings?.streamingEnabled ?? true) ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                    '--tw-translate-x': (settings?.streamingEnabled ?? true) ? '24px' : '0',
-                                    transition: 'background-color 0.4s, transform 0.4s'
-                                } as React.CSSProperties}
-                            ></span>
-                        </label>
-                    </div>
-
-
-                    {/* Data Management Buttons */}
-                    <div className="pt-3 border-t space-y-2" style={{borderColor: 'var(--sidebar-border)'}}>
+                <div className="flex items-center justify-between pb-4 border-b mb-4" style={{borderColor: 'var(--sidebar-border)'}}>
+                    <h2 className="text-xl font-bold flex items-center gap-2" style={{color: 'var(--text-primary)'}}>
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M4.343 19.657l.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        Big AI
+                    </h2>
+                    
+                    {/* Mobile Close Button */}
+                    {isMobileView && (
                         <button 
-                            className="w-full text-left text-sm p-2 rounded-lg transition"
-                            onClick={handleDeleteAllChats}
-                            style={{backgroundColor: 'var(--accent-error)', color: 'white'}}
+                            onClick={onCloseSidebar} 
+                            className="p-1 rounded-full hover:bg-[var(--sidebar-item-hover)]"
+                            style={{color: 'var(--text-primary)'}}
                         >
-                            <span className="font-semibold flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                Delete All Chats
-                            </span>
+                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
                         </button>
-                        <button 
-                            className="w-full text-left text-sm p-2 rounded-lg transition"
-                            onClick={handleClearLocalStorage}
-                            style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--border-color)'}}
-                        >
-                            <span className="font-semibold flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10m0 0h16M4 17l4-4m-4 4l4 4M20 7v10m0 0H4m16 0l-4-4m4 4l-4 4M12 5v14"></path></svg>
-                                Clear Local Cache
-                            </span>
-                        </button>
-                    </div>
+                    )}
                 </div>
-
-                {/* Authentication Status */}
-                <div className="text-sm border-t pt-4 mt-4" style={{color: 'var(--text-secondary)', borderColor: 'var(--sidebar-border)'}}>
-                    <div className="truncate mb-2" style={{color: 'var(--text-primary)'}}>
-                         Logged in as: {user?.email || "User"}
-                    </div>
-                </div>
-                <button 
-                    className="w-full text-left text-sm p-2 rounded-lg transition hover:bg-red-900/50"
-                    onClick={handleSignOut}
-                    style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-error)'}}
+                
+                {/* New Chat Button */}
+                <button
+                    onClick={handleNewChat}
+                    className="w-full flex items-center justify-center p-3 rounded-xl font-semibold shadow-lg transition-colors mb-4"
+                    style={{backgroundColor: 'var(--accent-primary)', color: 'var(--ai-bubble-text)'}} 
                 >
-                    Log out
+                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path></svg> 
+                    Start New Chat
                 </button>
+
+
+                {/* Conversation Mode Button */}
+                <button
+                    onClick={onOpenConversationMode}
+                    className="w-full flex items-center justify-center p-3 rounded-xl font-semibold transition-colors mb-4"
+                    style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--sidebar-border)'}}
+                    title="Start Voice Conversation"
+                >
+                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    Conversation Mode
+                </button>
+
+
+                {/* History List */}
+                <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <h3 className="text-sm font-semibold uppercase sticky top-0 py-1" style={{color: 'var(--text-secondary)', backgroundColor: 'var(--sidebar-bg)'}}>
+                        History ({history.length})
+                    </h3>
+                    {loading && <div className="text-sm p-3" style={{color: 'var(--text-secondary)'}}>Loading history...</div>}
+                    
+                    {history.length === 0 && !loading && (
+                        <div className="text-sm p-3" style={{color: 'var(--text-secondary)'}}>No history found.</div>
+                    )}
+                    
+                    {history.map((chat) => (
+                        <div 
+                            key={chat.id}
+                            className={`group flex items-center justify-between p-3 rounded-lg text-sm transition duration-150 ${
+                                chat.id === currentChatId 
+                                    ? 'font-semibold' 
+                                    : 'hover:opacity-80'
+                            }`}
+                            style={{
+                                backgroundColor: chat.id === currentChatId ? 'var(--accent-primary)' : 'var(--bg-secondary)',
+                                color: chat.id === currentChatId ? 'var(--ai-bubble-text)' : 'var(--text-primary)',
+                                cursor: 'pointer'
+                            }}
+                            title={chat.title}
+                        >
+                            {/* Title Section (Clickable area to select chat) */}
+                            <button
+                                onClick={() => onSelectChat(chat.id)}
+                                className="flex items-center flex-1 min-w-0 pr-2 text-left"
+                                style={{ color: 'inherit', background: 'none', border: 'none', padding: 0 }}
+                            >
+                                <svg className="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4M12 4v16"></path></svg>
+                                <span className="truncate flex-1">
+                                    {chat.title}
+                                </span>
+                            </button>
+                            
+                            {/* Delete Button (Visible on hover) */}
+                            <button
+                                onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.id); }}
+                                className={`p-1 rounded transition ml-2 shrink-0 opacity-0 group-hover:opacity-100`}
+                                title="Delete Chat"
+                                style={{ 
+                                    color: chat.id === currentChatId ? 'var(--ai-bubble-text)' : 'var(--accent-error)',
+                                    backgroundColor: chat.id === currentChatId ? 'var(--accent-primary-hover)' : 'transparent',
+                                }}
+                            >
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                            </button>
+                        </div>
+                    ))}
+                </div>
+                
+                {/* Footer Area - Collapsible Settings and Auth */}
+                <div className="pt-4 border-t mt-4 space-y-2" style={{borderColor: 'var(--sidebar-border)'}}>
+                    
+                    {/* Settings Toggle Button */}
+                    <button 
+                        className="w-full flex items-center justify-between p-2 rounded-lg font-semibold transition"
+                        onClick={() => setIsSettingsCollapsed(prev => !prev)}
+                        style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)'}}
+                    >
+                        <span className="flex items-center gap-2">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.333.9 2.456 2.456a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.942 1.543-.9 3.333-2.456 2.456a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.333-.9-2.456-2.456a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.942-1.543.9-3.333 2.456-2.456a1.724 1.724 0 002.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                            Settings
+                        </span>
+                        <svg className={`w-4 h-4 transition-transform ${isSettingsCollapsed ? 'transform rotate-0' : 'transform rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
+                    </button>
+
+                    {/* Collapsible Settings Content */}
+                    <div className={`space-y-3 overflow-hidden transition-all duration-300 ${isSettingsCollapsed ? 'max-h-0' : 'max-h-[800px]'}`}>
+
+                        {/* Quick Prompt/Template Access */}
+                        <button 
+                            className="w-full text-left text-sm p-2 rounded-lg transition"
+                            onClick={() => { setIsPromptManagerOpen(true); if(isMobileView) onCloseSidebar(); }} // Close sidebar when opening manager
+                            style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-secondary)'}}
+                        >
+                            <span className="font-semibold flex items-center gap-2">
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM17 17H7m10-4H7m4-4H7"></path></svg>
+                                Manage Prompts & API Key
+                            </span>
+                        </button>
+
+                        {/* Model Selector */}
+                        <div>
+                            <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>AI Model</label>
+                            <select
+                                value={settings?.globalModel || AVAILABLE_MODELS[0].id}
+                                onChange={handleModelChange}
+                                className="w-full p-2 rounded-lg border text-sm"
+                                style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
+                            >
+                                {AVAILABLE_MODELS.map(model => (
+                                    <option key={model.id} value={model.id}>{model.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Theme Selector (Uses the expanded list from ThemeContext) */}
+                        <div>
+                            <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>Theme</label>
+                            <select
+                                value={themeName}
+                                onChange={handleThemeChange}
+                                className="w-full p-2 rounded-lg border text-sm"
+                                style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
+                            >
+                                {availableThemes.map(theme => (
+                                    <option key={theme.id} value={theme.id}>{theme.name}</option>
+                                ))}
+                            </select>
+                        </div>
+
+                        {/* Dark/Light Mode Toggle */}
+                        <div className="flex items-center justify-between text-sm py-2">
+                            <span style={{color: 'var(--text-secondary)'}}>Dark Mode ({themeMode})</span>
+                            <label className="relative inline-block w-12 h-6">
+                                <input type="checkbox" checked={themeMode === 'dark'} onChange={handleModeToggle} className="opacity-0 w-0 h-0" />
+                                <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
+                                    style={{
+                                        backgroundColor: themeMode === 'dark' ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                        '--tw-translate-x': themeMode === 'dark' ? '24px' : '0',
+                                        transition: 'background-color 0.4s, transform 0.4s'
+                                    } as React.CSSProperties}
+                                ></span>
+                            </label>
+                        </div>
+
+                        {/* Streaming Toggle - Renamed Label */}
+                        <div className="flex items-center justify-between text-sm py-2">
+                            <span style={{color: 'var(--text-secondary)'}}>AI Response: {settings?.streamingEnabled ? 'Typing (Stream)' : 'Instant (Full)'}</span>
+                            <label className="relative inline-block w-12 h-6">
+                                <input 
+                                    type="checkbox" 
+                                    checked={settings?.streamingEnabled ?? true} 
+                                    onChange={handleStreamingToggle} 
+                                    className="opacity-0 w-0 h-0" 
+                                />
+                                <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
+                                    style={{
+                                        backgroundColor: (settings?.streamingEnabled ?? true) ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                                        '--tw-translate-x': (settings?.streamingEnabled ?? true) ? '24px' : '0',
+                                        transition: 'background-color 0.4s, transform 0.4s'
+                                    } as React.CSSProperties}
+                                ></span>
+                            </label>
+                        </div>
+
+
+                        {/* Data Management Buttons */}
+                        <div className="pt-3 border-t space-y-2" style={{borderColor: 'var(--sidebar-border)'}}>
+                            <button 
+                                className="w-full text-left text-sm p-2 rounded-lg transition"
+                                onClick={handleDeleteAllChats}
+                                style={{backgroundColor: 'var(--accent-error)', color: 'white'}}
+                            >
+                                <span className="font-semibold flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    Delete All Chats
+                                </span>
+                            </button>
+                            <button 
+                                className="w-full text-left text-sm p-2 rounded-lg transition"
+                                onClick={handleClearLocalStorage}
+                                style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--sidebar-border)'}}
+                            >
+                                <span className="font-semibold flex items-center gap-2">
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10m0 0h16M4 17l4-4m-4 4l4 4M20 7v10m0 0H4m16 0l-4-4m4 4l-4 4M12 5v14"></path></svg>
+                                    Clear Local Cache
+                                </span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Authentication Status */}
+                    <div className="text-sm border-t pt-4 mt-4" style={{color: 'var(--text-secondary)', borderColor: 'var(--sidebar-border)'}}>
+                        <div className="truncate mb-2" style={{color: 'var(--text-primary)'}}>
+                            Logged in as: {user?.email || "User"}
+                        </div>
+                    </div>
+                    <button 
+                        className="w-full text-left text-sm p-2 rounded-lg transition hover:bg-red-900/50"
+                        onClick={handleSignOut}
+                        style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-error)'}}
+                    >
+                        Log out
+                    </button>
+                </div>
             </div>
         </div>
     );
@@ -5520,7 +5566,7 @@ export async function getConversation(chatId: string, userId: string): Promise<C
 }
 
 /**
- * Creates a new conversation and adds the first message.
+ * Creates a new conversation and adds the first user message.
  */
 export async function createConversation(
     userId: string, 
@@ -5566,7 +5612,8 @@ export async function createConversation(
 }
 
 /**
- * Appends a new user message and the subsequent AI response to an existing conversation.
+ * Appends a new message pair to an existing conversation. 
+ * If isFirstExchange is true, only the model's response is appended, as the user message was saved during creation.
  */
 export async function updateConversation(
     chatId: string, 
@@ -5604,13 +5651,25 @@ export async function updateConversation(
     const serializedUserMessage = serializeMessage(userMessage);
     const serializedModelMessage = serializeMessage(modelMessage);
 
+    let messagesToAppend: FirestoreMessage[];
+
+    if (isFirstExchange) {
+        // FIX: If it's the first exchange, the user message is already stored by createConversation.
+        // We only append the model response.
+        messagesToAppend = [serializedModelMessage];
+    } else {
+        // Normal exchange: append both user message and model response.
+        messagesToAppend = [serializedUserMessage, serializedModelMessage];
+    }
+
     const updateData: { messages: admin.firestore.FieldValue; updatedAt: number; title?: string } = {
-        messages: admin.firestore.FieldValue.arrayUnion(serializedUserMessage, serializedModelMessage),
+        messages: admin.firestore.FieldValue.arrayUnion(...messagesToAppend),
         updatedAt: now,
     };
 
     if (isFirstExchange) {
-        updateData.title = generateTitle(userText);
+        // Update the title again, though technically handled in create, this ensures it exists
+        updateData.title = generateTitle(userText); 
     }
     
     await docRef.update(updateData);
@@ -5852,837 +5911,7 @@ export { app };
 
 --- END FILE: utils\firebase.ts ---
 
--------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------
 
-AI: This is a great set of feedback! Addressing these issues will significantly improve the usability and robustness of the application.
-
-Here are the necessary code changes and explanations for each point.
-
-### Summary of Fixes
-
-1.  **Sidebar Toggle:** Implemented full desktop sidebar collapse functionality using the hamburger menu.
-2.  **First Message Bug:** Fixed the logic flow in both the client (`ChatArea.tsx`) and the server (`lib/history.ts`) to prevent the chat from reloading after the first message and to stop message duplication in the database.
-3.  **Chat Bubble Overflow:** Added essential CSS properties to ensure long code blocks scroll horizontally without breaking the main chat layout.
-4.  **User Avatar Contrast:** Fixed the user avatar's text color using CSS variables to ensure high contrast against its background across all themes.
-
----
-
-## 1. Core Structural Changes (app & sidebar)
-
-We need to change how `app/page.tsx` and `components/Sidebar.tsx` handle the sidebar state to allow desktop collapsing, and modify `ChatArea.tsx` to ensure the toggle button is always present.
-
-### `app/page.tsx`
-
-The sidebar state management is updated to default to `open` on desktop and uses the `isSidebarOpen` state universally.
-
-```tsx
-// app/page.tsx
-'use client';
-
-import { useState, useEffect } from 'react';
-import ChatArea from '@/components/ChatArea';
-import Sidebar from '@/components/Sidebar';
-import { useAuth } from '@/components/providers/AuthProvider';
-import AuthGate from '@/components/ui/AuthGate';
-import ConversationModeOverlay from '@/components/ConversationModeOverlay';
-import { useTheme } from '@/components/providers/ThemeContext';
-
-export default function HomePage() {
-  const { user, loading: authLoading } = useAuth();
-  const { loadingSettings } = useTheme();
-
-  const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
-  const [refreshSidebarToggle, setRefreshSidebarToggle] = useState(false);
-  const [isConversationModeOpen, setIsConversationModeOpen] = useState(false);
-  
-  // === RESPONSIVENESS STATE ===
-  const [isMobile, setIsMobile] = useState(false);
-  // Default to true (open) for desktop load, will be set via effect if mobile
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true); 
-
-  // Effect to determine screen size and manage sidebar visibility default
-  useEffect(() => {
-    const handleResize = () => {
-      const mobile = window.innerWidth < 768; 
-      setIsMobile(mobile);
-      
-      // If initialized or resized to mobile, set sidebar closed by default
-      if (mobile && window.innerWidth < 768 && isSidebarOpen) {
-          // If we were previously open on desktop, don't force close on resize.
-          // We rely on the initial state and user clicks for dynamic behavior.
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    handleResize(); // Initial check
-    
-    // Set initial state based on window size (if client side render)
-    if (typeof window !== 'undefined') {
-        const initialMobile = window.innerWidth < 768;
-        setIsMobile(initialMobile);
-        setIsSidebarOpen(!initialMobile); // Open on desktop by default
-    }
-
-    return () => window.removeEventListener('resize', handleResize);
-  }, []); 
-  // ===================================
-
-  const handleSelectChat = (chatId: string | undefined) => {
-    setCurrentChatId(chatId);
-    if (isConversationModeOpen) setIsConversationModeOpen(false);
-    
-    if (isMobile) setIsSidebarOpen(false); 
-  };
-  
-  const handleNewMessageSent = () => {
-    setRefreshSidebarToggle(prev => !prev);
-  }
-
-  if (authLoading || loadingSettings) {
-    return <div className="flex h-screen items-center justify-center text-xl" style={{color: 'var(--text-primary)'}}>Loading application...</div>
-  }
-
-  if (!user) {
-    return <AuthGate />;
-  }
-
-  // Main application view
-  return (
-    // FIX: Ensure the main container is hidden overflow to prevent scroll issues
-    <div className="flex h-screen overflow-hidden relative" style={{ backgroundColor: 'var(--bg-primary)' }}>
-      
-      {/* 1. Sidebar - Updated props and class logic moved to Sidebar.tsx */}
-      <Sidebar 
-        onSelectChat={handleSelectChat} 
-        currentChatId={currentChatId}
-        onNewMessageSent={handleNewMessageSent}
-        onOpenConversationMode={() => { 
-            setIsConversationModeOpen(true); 
-            if (isMobile) setIsSidebarOpen(false);
-        }} 
-        key={refreshSidebarToggle.toString()} 
-        
-        isSidebarOpen={isSidebarOpen} // Universal state for open/closed
-        onCloseSidebar={() => setIsSidebarOpen(false)} // Clearer name for close handler
-        isMobileView={isMobile}
-      />
-      
-      {/* 2. Main Chat Area */}
-      {/* Note: Flex-1 ensures ChatArea takes the remaining space, adjusting dynamically as Sidebar width changes */}
-      <main className="flex-1 flex flex-col min-w-0 w-full h-full"> 
-        <ChatArea 
-          chatId={currentChatId}
-          onChatIdChange={setCurrentChatId}
-          onNewMessageSent={handleNewMessageSent}
-          onOpenConversationMode={() => setIsConversationModeOpen(true)}
-          
-          onToggleSidebar={() => setIsSidebarOpen(prev => !prev)}
-          isMobileView={isMobile}
-        />
-      </main>
-      
-      {/* 3. Mobile Overlay Backdrop */}
-      {isMobile && isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-20 md:hidden" 
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-      
-      {/* 4. Conversation Mode Overlay */}
-      {isConversationModeOpen && (
-        <ConversationModeOverlay
-          chatId={currentChatId}
-          onChatIdChange={setCurrentChatId}
-          onClose={() => setIsConversationModeOpen(false)}
-          onNewMessageSent={handleNewMessageSent}
-        />
-      )}
-    </div>
-  );
-}
-```
-
-### `components/Sidebar.tsx`
-
-The props are renamed, and the class application logic is updated to handle desktop collapse (`w-0 p-0 overflow-hidden`).
-
-```tsx
-// components/Sidebar.tsx
-'use client';
-
-import React, { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
-import { useTheme } from '@/components/providers/ThemeContext';
-import PromptManager from './PromptManager'; 
-
-interface ChatHistoryItem {
-    id: string;
-    title: string;
-    updatedAt: number;
-}
-
-interface SidebarProps {
-    onSelectChat: (chatId: string | undefined) => void;
-    currentChatId: string | undefined;
-    onNewMessageSent: () => void; 
-    onOpenConversationMode: () => void; 
-    isSidebarOpen: boolean; // Universal state for open/closed
-    onCloseSidebar: () => void; // Universal close handler
-    isMobileView: boolean;
-}
-
-// Available Models list (Kept the same)
-const AVAILABLE_MODELS = [
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-    { id: 'gemini-2.5-flash-preview-09-2025', name: 'Gemini 2.5 Flash (Recommended)' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Stable)' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
-];
-
-export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent, onOpenConversationMode, isSidebarOpen, onCloseSidebar, isMobileView }: SidebarProps) {
-    const { user, signOut, getIdToken } = useAuth();
-    const { themeName, themeMode, setMode, setTheme, settings, updateSettings, availableThemes } = useTheme();
-    
-    const [history, setHistory] = useState<ChatHistoryItem[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [isPromptManagerOpen, setIsPromptManagerOpen] = useState(false); 
-    const [isSettingsCollapsed, setIsSettingsCollapsed] = useState(true); 
-// ... (fetchHistory, other handlers remain the same)
-
-    const handleSignOut = async () => {
-        if (confirm("Are you sure you want to sign out?")) {
-            await signOut();
-        }
-    };
-    
-// ... (other handlers remain the same)
-
-
-    return (
-        <div 
-            className={`
-                flex flex-col h-screen shadow-2xl shrink-0 transition-all duration-300 ease-in-out
-                ${isMobileView 
-                    ? `fixed z-30 inset-y-0 w-full max-w-[80%] p-3 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`
-                    : isSidebarOpen ? 'w-64 relative translate-x-0 p-3' : 'w-0 p-0 overflow-hidden' // Desktop collapse logic
-                }
-            `} 
-            style={{backgroundColor: 'var(--sidebar-bg)', color: 'var(--text-primary)', borderRight: isSidebarOpen ? '1px solid var(--sidebar-border)' : 'none'}}
-        >
-            
-            {isPromptManagerOpen && (
-                <PromptManager onClose={() => { setIsPromptManagerOpen(false); onNewMessageSent(); }} />
-            )}
-            
-            {/* Only render content if sidebar is visibly open */}
-            {isSidebarOpen ? (
-                <>
-                    <div className="flex items-center justify-between pb-4 border-b mb-4" style={{borderColor: 'var(--sidebar-border)'}}>
-                        <h2 className="text-xl font-bold flex items-center gap-2" style={{color: 'var(--text-primary)'}}>
-                            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M4.343 19.657l.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
-                            Big AI
-                        </h2>
-                        
-                        {/* Mobile Close Button */}
-                        {isMobileView && (
-                            <button 
-                                onClick={onCloseSidebar} 
-                                className="p-1 rounded-full hover:bg-[var(--sidebar-item-hover)]"
-                                style={{color: 'var(--text-primary)'}}
-                            >
-                                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
-                            </button>
-                        )}
-                    </div>
-                    
-                    {/* ... Rest of Sidebar content ... */}
-                    
-                    <button
-                        onClick={handleNewChat}
-                        className="w-full flex items-center justify-center p-3 rounded-xl font-semibold shadow-lg transition-colors mb-4"
-                        style={{backgroundColor: 'var(--accent-primary)', color: 'var(--ai-bubble-text)'}} 
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path></svg> 
-                        Start New Chat
-                    </button>
-
-
-                    {/* Conversation Mode Button */}
-                    <button
-                        onClick={onOpenConversationMode}
-                        className="w-full flex items-center justify-center p-3 rounded-xl font-semibold transition-colors mb-4"
-                        style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--sidebar-border)'}}
-                        title="Start Voice Conversation"
-                    >
-                        <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
-                        Conversation Mode
-                    </button>
-
-
-                    {/* History List */}
-                    <div className="flex-1 overflow-y-auto space-y-2 pr-1">
-                        <h3 className="text-sm font-semibold uppercase sticky top-0 py-1" style={{color: 'var(--text-secondary)', backgroundColor: 'var(--sidebar-bg)'}}>
-                            History ({history.length})
-                        </h3>
-                        {loading && <div className="text-sm p-3" style={{color: 'var(--text-secondary)'}}>Loading history...</div>}
-                        
-                        {history.length === 0 && !loading && (
-                            <div className="text-sm p-3" style={{color: 'var(--text-secondary)'}}>No history found.</div>
-                        )}
-                        
-                        {history.map((chat) => (
-                            <div 
-                                key={chat.id}
-                                className={`group flex items-center justify-between p-3 rounded-lg text-sm transition duration-150 ${
-                                    chat.id === currentChatId 
-                                        ? 'font-semibold' 
-                                        : 'hover:opacity-80'
-                                }`}
-                                style={{
-                                    backgroundColor: chat.id === currentChatId ? 'var(--accent-primary)' : 'var(--bg-secondary)',
-                                    color: chat.id === currentChatId ? 'var(--ai-bubble-text)' : 'var(--text-primary)',
-                                    cursor: 'pointer'
-                                }}
-                                title={chat.title}
-                            >
-                                {/* Title Section (Clickable area to select chat) */}
-                                <button
-                                    onClick={() => onSelectChat(chat.id)}
-                                    className="flex items-center flex-1 min-w-0 pr-2 text-left"
-                                    style={{ color: 'inherit', background: 'none', border: 'none', padding: 0 }}
-                                >
-                                    <svg className="w-4 h-4 mr-2 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M20 12H4M12 4v16"></path></svg>
-                                    <span className="truncate flex-1">
-                                        {chat.title}
-                                    </span>
-                                </button>
-                                
-                                {/* Delete Button (Visible on hover) */}
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteChat(chat.id); }}
-                                    className={`p-1 rounded transition ml-2 shrink-0 opacity-0 group-hover:opacity-100`}
-                                    title="Delete Chat"
-                                    style={{ 
-                                        color: chat.id === currentChatId ? 'var(--ai-bubble-text)' : 'var(--accent-error)',
-                                        backgroundColor: chat.id === currentChatId ? 'var(--accent-primary-hover)' : 'transparent',
-                                    }}
-                                >
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                    
-                    {/* Footer Area - Collapsible Settings and Auth */}
-                    <div className="pt-4 border-t mt-4 space-y-2" style={{borderColor: 'var(--sidebar-border)'}}>
-                        
-                        {/* Settings Toggle Button */}
-                        <button 
-                            className="w-full flex items-center justify-between p-2 rounded-lg font-semibold transition"
-                            onClick={() => setIsSettingsCollapsed(prev => !prev)}
-                            style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--text-primary)'}}
-                        >
-                            <span className="flex items-center gap-2">
-                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.942 3.333.9 2.456 2.456a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.942 1.543-.9 3.333-2.456 2.456a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.942-3.333-.9-2.456-2.456a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.942-1.543.9-3.333 2.456-2.456a1.724 1.724 0 002.572-1.065z"></path><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
-                                Settings
-                            </span>
-                            <svg className={`w-4 h-4 transition-transform ${isSettingsCollapsed ? 'transform rotate-0' : 'transform rotate-180'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-
-                        {/* Collapsible Settings Content */}
-                        <div className={`space-y-3 overflow-hidden transition-all duration-300 ${isSettingsCollapsed ? 'max-h-0' : 'max-h-[800px]'}`}>
-
-                            {/* Quick Prompt/Template Access */}
-                            <button 
-                                className="w-full text-left text-sm p-2 rounded-lg transition"
-                                onClick={() => { setIsPromptManagerOpen(true); if(isMobileView) onCloseSidebar(); }} // Close sidebar when opening manager
-                                style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-secondary)'}}
-                            >
-                                <span className="font-semibold flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM17 17H7m10-4H7m4-4H7"></path></svg>
-                                    Manage Prompts & API Key
-                                </span>
-                            </button>
-
-                            {/* Model Selector */}
-                            <div>
-                                <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>AI Model</label>
-                                <select
-                                    value={settings?.globalModel || AVAILABLE_MODELS[0].id}
-                                    onChange={handleModelChange}
-                                    className="w-full p-2 rounded-lg border text-sm"
-                                    style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
-                                >
-                                    {AVAILABLE_MODELS.map(model => (
-                                        <option key={model.id} value={model.id}>{model.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Theme Selector (Uses the expanded list from ThemeContext) */}
-                            <div>
-                                <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>Theme</label>
-                                <select
-                                    value={themeName}
-                                    onChange={handleThemeChange}
-                                    className="w-full p-2 rounded-lg border text-sm"
-                                    style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
-                                >
-                                    {availableThemes.map(theme => (
-                                        <option key={theme.id} value={theme.id}>{theme.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Dark/Light Mode Toggle */}
-                            <div className="flex items-center justify-between text-sm py-2">
-                                <span style={{color: 'var(--text-secondary)'}}>Dark Mode ({themeMode})</span>
-                                <label className="relative inline-block w-12 h-6">
-                                    <input type="checkbox" checked={themeMode === 'dark'} onChange={handleModeToggle} className="opacity-0 w-0 h-0" />
-                                    <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
-                                        style={{
-                                            backgroundColor: themeMode === 'dark' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                            '--tw-translate-x': themeMode === 'dark' ? '24px' : '0',
-                                            transition: 'background-color 0.4s, transform 0.4s'
-                                        } as React.CSSProperties}
-                                    ></span>
-                                </label>
-                            </div>
-
-                            {/* Streaming Toggle - Renamed Label */}
-                            <div className="flex items-center justify-between text-sm py-2">
-                                <span style={{color: 'var(--text-secondary)'}}>AI Response: {settings?.streamingEnabled ? 'Typing (Stream)' : 'Instant (Full)'}</span>
-                                <label className="relative inline-block w-12 h-6">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={settings?.streamingEnabled ?? true} 
-                                        onChange={handleStreamingToggle} 
-                                        className="opacity-0 w-0 h-0" 
-                                    />
-                                    <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
-                                        style={{
-                                            backgroundColor: (settings?.streamingEnabled ?? true) ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                            '--tw-translate-x': (settings?.streamingEnabled ?? true) ? '24px' : '0',
-                                            transition: 'background-color 0.4s, transform 0.4s'
-                                        } as React.CSSProperties}
-                                    ></span>
-                                </label>
-                            </div>
-
-
-                            {/* Data Management Buttons */}
-                            <div className="pt-3 border-t space-y-2" style={{borderColor: 'var(--sidebar-border)'}}>
-                                <button 
-                                    className="w-full text-left text-sm p-2 rounded-lg transition"
-                                    onClick={handleDeleteAllChats}
-                                    style={{backgroundColor: 'var(--accent-error)', color: 'white'}}
-                                >
-                                    <span className="font-semibold flex items-center gap-2">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
-                                        Delete All Chats
-                                    </span>
-                                </button>
-                                <button 
-                                    className="w-full text-left text-sm p-2 rounded-lg transition"
-                                    onClick={handleClearLocalStorage}
-                                    style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--sidebar-border)'}}
-                                >
-                                    <span className="font-semibold flex items-center gap-2">
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10m0 0h16M4 17l4-4m-4 4l4 4M20 7v10m0 0H4m16 0l-4-4m4 4l-4 4M12 5v14"></path></svg>
-                                        Clear Local Cache
-                                    </span>
-                                </button>
-                            </div>
-                        </div>
-
-                        {/* Authentication Status */}
-                        <div className="text-sm border-t pt-4 mt-4" style={{color: 'var(--text-secondary)', borderColor: 'var(--sidebar-border)'}}>
-                            <div className="truncate mb-2" style={{color: 'var(--text-primary)'}}>
-                                Logged in as: {user?.email || "User"}
-                            </div>
-                        </div>
-                        <button 
-                            className="w-full text-left text-sm p-2 rounded-lg transition hover:bg-red-900/50"
-                            onClick={handleSignOut}
-                            style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-error)'}}
-                        >
-                            Log out
-                        </button>
-                </>
-            ) : null}
-        </div>
-    );
-}
-```
-
-### `components/ChatArea.tsx`
-
-Ensure the sidebar toggle button is visible on both mobile and desktop.
-
-```tsx
-// components/ChatArea.tsx (Header section)
-// ... (around line 170)
-
-      <header className="p-4 border-b shadow-sm flex justify-between items-center" style={{backgroundColor: 'var(--header-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}>
-        
-        {/* === SIDEBAR TOGGLE BUTTON (Visible on all screens now) === */}
-        {/* Removed md:hidden to allow desktop toggle */}
-        <button
-            onClick={onToggleSidebar}
-            className="p-2 rounded-lg transition mr-2 md:block" 
-            title="Toggle Sidebar"
-            disabled={isLoading || isHistoryLoading}
-            style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
-        >
-             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
-        </button>
-        {/* ================================== */}
-
-        <h1 className="font-semibold truncate max-w-[calc(100%-80px)]">
-// ...
-```
-
----
-
-## 2. First Message Reload and Duplication Fix
-
-This requires changes in three files: `ChatArea.tsx`, `lib/history.ts`, and `app/api/chat/route.ts`.
-
-### `components/ChatArea.tsx` (Preventing Reload)
-
-We introduce `isInitialExchange` state to signal the `useEffect` that the history is already current and a fetch/clear is unnecessary.
-
-```tsx
-// components/ChatArea.tsx
-// ... (imports)
-
-// ... (interface)
-
-export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onOpenConversationMode, onToggleSidebar, isMobileView }: ChatAreaProps) {
-  const { user, getIdToken } = useAuth();
-  const { settings } = useTheme();
-  
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [isHistoryLoading, setIsHistoryLoading] = useState(false);
-  const [attachments, setAttachments] = useState<File[]>([]); 
-  
-  const chatEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  
-  // NEW STATE: Tracks if the current chat ID change was due to sending the first message.
-  const [isInitialExchange, setIsInitialExchange] = useState(false); 
-  
-// ... (useSpeechRecognition hook)
-
-// ... (Dynamic Input Height Adjustment)
-
-
-  // --- History Loading Effect ---
-  useEffect(() => {
-    if (!user) return;
-
-    if (chatId) {
-      
-      // FIX 1: Prevent clearing/fetching if this ID change was triggered by the first message being sent.
-      if (isInitialExchange) {
-        setIsInitialExchange(false); // Reset flag
-        setIsHistoryLoading(false);
-        // Do NOT clear messages or fetch history, as local state is already accurate.
-        return; 
-      }
-
-      setIsHistoryLoading(true);
-      setMessages([]); // Clear old messages
-      
-      const fetchChatHistory = async () => {
-        try {
-// ... (rest of fetchChatHistory function remains the same)
-          const token = await getIdToken();
-          const response = await fetch(`/api/chat?chatId=${chatId}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-          });
-          
-          if (response.ok) {
-            const conversation: Conversation = await response.json();
-            const clientMessages: ChatMessage[] = conversation.messages.map(m => ({
-                ...m,
-                timestamp: new Date(m.timestamp),
-            }));
-            setMessages(clientMessages);
-          } else {
-            console.error("Failed to load conversation:", chatId);
-            setMessages([{ id: uuidvv4(), text: 'Failed to load conversation history. Check console for details.', role: 'model', timestamp: new Date() } as ChatMessage]);
-          }
-        } catch (error) {
-          console.error("Error fetching chat history:", error);
-        } finally {
-          setIsHistoryLoading(false);
-        }
-      };
-      fetchChatHistory();
-    } else {
-      // New chat state
-      setMessages([]);
-      setAttachments([]); 
-      setIsHistoryLoading(false);
-    }
-  }, [chatId, user, getIdToken, isInitialExchange]); // Add isInitialExchange to dependency array
-
-// ... (updateBotStreamingMessage, finalizeBotMessage remain the same)
-
-  // --- Main Send Handler ---
-
-  const handleSendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
-// ... (input validation, attachment conversion, setting up user/pending messages)
-
-    addMessage(userMessage);
-    addMessage({ 
-        id: BOT_PENDING_ID, 
-        text: '...', 
-        role: 'model', 
-        timestamp: new Date() 
-    } as ChatMessage);
-    
-    setInput('');
-    setAttachments([]); 
-    setIsLoading(true);
-
-    try {
-// ... (API call setup)
-
-      const response = await fetch('/api/chat', {
-// ... (API call body/headers)
-      });
-      
-      // ... (Error handling)
-
-      const newChatId = response.headers.get('X-Chat-ID');
-      if (newChatId && newChatId !== chatId) {
-          // FIX 2: Set flag before updating parent state
-          setIsInitialExchange(true); 
-          onChatIdChange(newChatId); 
-      }
-
-// ... (stream reading and finalization)
-
-    } catch (error) {
-// ...
-    } finally {
-      setIsLoading(false);
-    }
-  };
-  
-// ... (rest of component)
-```
-
-### `lib/history.ts` (Preventing Duplication)
-
-We modify `updateConversation` to detect `isFirstExchange` and skip appending the user's message, as it was already saved during `createConversation`.
-
-```typescript
-// lib/history.ts
-
-// ... (imports, helpers)
-
-/**
- * Appends a new user message and the subsequent AI response to an existing conversation.
- */
-export async function updateConversation(
-    chatId: string, 
-    userText: string, 
-    modelText: string,
-    userId: string, // Require User ID for security
-    files: FileAttachment[] = [],
-    isFirstExchange: boolean = false // <-- This flag determines the fix
-): Promise<void> {
-    
-    // First, verify access (Essential Security Check)
-    const docRef = db.collection(CONVERSATIONS_COLLECTION).doc(chatId);
-    const doc = await docRef.get();
-    if (!doc.exists || doc.data()?.userId !== userId) {
-        throw new Error("Unauthorized chat update attempt.");
-    }
-    
-    const now = Date.now();
-    
-    const userMessage: ChatMessage = {
-        id: uuidv4(),
-        text: userText,
-        role: 'user' as Role,
-        timestamp: now,
-        files: files.length > 0 ? files : undefined,
-    };
-    
-    const modelMessage: ChatMessage = {
-        id: uuidv4(),
-        text: modelText,
-        role: 'model' as Role,
-        timestamp: now,
-    };
-
-    const serializedUserMessage = serializeMessage(userMessage);
-    const serializedModelMessage = serializeMessage(modelMessage);
-
-    let messagesToAppend: FirestoreMessage[];
-
-    if (isFirstExchange) {
-        // FIX: If it's the first exchange, the user message is already stored by createConversation.
-        // We only append the model response.
-        messagesToAppend = [serializedModelMessage];
-    } else {
-        // Normal exchange: append both user message and model response.
-        messagesToAppend = [serializedUserMessage, serializedModelMessage];
-    }
-
-    const updateData: { messages: admin.firestore.FieldValue; updatedAt: number; title?: string } = {
-        messages: admin.firestore.FieldValue.arrayUnion(...messagesToAppend),
-        updatedAt: now,
-    };
-
-    if (isFirstExchange) {
-        updateData.title = generateTitle(userText);
-    }
-    
-    await docRef.update(updateData);
-}
-// ... (rest of file remains the same)
-```
-
-### `app/api/chat/route.ts` (Ensuring `isFirstExchange` is correct)
-
-This file already correctly sets `isFirstExchange = true` when `incomingChatId` is missing, and passes this flag to `updateConversation`. No changes needed here, as the previous file handles the duplication logic.
-
----
-
-## 3. Chat Bubble Overflow Fix
-
-This is a CSS fix to ensure code blocks respect their container width and enable horizontal scrolling internally.
-
-### `app\globals.css`
-
-```css
-/* app/globals.css */
-/* ... (existing styles) ... */
-
-/* Markdown and Code Styling Overrides */
-
-/* Code block wrapper (created by custom renderer) */
-.code-block-container {
-    background-color: var(--code-block-bg) !important;
-    border: 1px solid var(--code-block-border) !important;
-    border-radius: 0.5rem !important;
-    margin-top: 1rem !important;
-    margin-bottom: 1rem !important;
-    overflow: hidden; /* Contains children border radius */
-    max-width: 100%; /* FIX 1: Constrain the wrapper */
-}
-
-/* Code block container (standard markdown pre tag) */
-.message-content pre {
-    /* Remove default markdown styles from PRE */
-    background-color: var(--code-block-bg) !important;
-    border: none !important;
-    margin: 0 !important;
-    padding: 0 !important;
-    border-radius: 0 !important;
-    overflow-x: auto; /* FIX: Enable horizontal scroll */
-    max-width: 100%; /* FIX 2: Ensure pre respects parent constraint */
-}
-
-/* Code content inside pre (Prism.js applies most styling here) */
-.message-content pre code {
-    /* Override Prism's default padding/margin/background/text settings */
-    color: var(--text-primary); /* Use theme color for text */
-    display: block;
-    padding: 1rem !important; /* Padding for the code content */
-    background: transparent !important; /* Use container background, not code background */
-    min-width: 100%; /* Important for horizontal scrolling */
-    box-sizing: border-box;
-    /* FIX: Force content not to wrap for horizontal scrolling */
-    white-space: pre !important; 
-    max-width: 1000px; /* This line is harmless, but the overflow-x fix is crucial */
-}
-
-/* ... (rest of file remains the same) */
-```
-
----
-
-## 4. User Avatar Contrast Fix
-
-We modify the user avatar element to use dynamically contrasting colors based on the theme variables (`--text-primary` for background, and `--bg-primary` for text).
-
-### `components/ChatBubble.tsx`
-
-```tsx
-// components/ChatBubble.tsx
-// ... (around line 300)
-
-    return (
-        // Added 'group' class here to enable CSS hover effects for message actions
-        <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} group`}>
-            <div className="flex items-start max-w-[75%]">
-                {/* Avatar / Role Indicator (AI) */}
-                <div className={`p-2 rounded-full text-white mr-3 shrink-0 self-start ${isUser ? 'hidden' : 'bg-blue-600'}`} style={{backgroundColor: isUser ? 'var(--text-primary)' : 'var(--accent-primary)'}}>
-                    {isUser ? '' : 'AI'}
-                </div>
-                
-                {/* Bubble Content */}
-                <div
-                    className={`p-3 rounded-xl shadow-md transition duration-300 ease-in-out break-words relative w-full ${ // w-full added previously, ensures bubble maximizes its 75% width
-                        isUser
-                            ? 'rounded-bl-none'
-                            : 'rounded-tr-none border'
-                    }`}
-                    style={{
-                        backgroundColor: isUser ? 'var(--user-bubble-bg)' : 'var(--ai-bubble-bg)',
-                        color: isUser ? 'var(--user-bubble-text)' : 'var(--ai-bubble-text)',
-                        borderColor: isUser ? 'transparent' : 'var(--border-color)'
-                    }}
-                >
-                    {/* Render Multimodal Attachments first */}
-                    {message.files && renderAttachments(message.files)}
-
-                    {/* Render Text Content */}
-                    <div 
-                        ref={contentRef}
-                        className={`message-content ${isUser ? '' : 'prose max-w-none'}`} 
-                        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-                    />
-                    
-                    {/* ... (Message Actions) ... */}
-                </div>
-                
-                {/* User Avatar / Role Indicator (User) */}
-                {/* FIX: Removed conflicting Tailwind classes (text-white, bg-gray-500) and forced dynamic contrast */}
-                <div 
-                    className={`p-2 rounded-full ml-3 shrink-0 self-start ${isUser ? '' : 'hidden'}`} 
-                    style={{
-                        // Background is the theme's primary text color (e.g., light gray in dark mode)
-                        backgroundColor: 'var(--text-primary)', 
-                        // Text color is the theme's primary background color (e.g., near black in dark mode)
-                        color: 'var(--bg-primary)' 
-                    }}
-                >
-                    {isUser ? 'You' : ''}
-                </div>
-            </div>
-        </div>
-    );
-}
-
-export default ChatBubble;
-```
-
----
-
-By applying these changes, you will have a collapsible sidebar interface, a reliable initial chat workflow without duplication, robust handling for wide content, and improved contrast for the user avatar across all themes.
-
--------------------------
-
-send me the full updated codes by making the suggested changes.
+is it possible to make the prompt and api configuration modal, the prompt manager modal to look good? because the main issue is if it has to stay within the sidebar then make it adjust in there or is it possible to simply take the modal outside to the center of the main screen when opened? i would like to do whatever looks best.
+can you tell me how i can manage the message actions(copy message and dictate message) buttons so that they don't block the message content while appearing when hovered? because when a code block is there it's blocking the horizontal scroll bar on the code blocks and sometimes message content as well. i want to know how to make it come a little more below than it's right now?

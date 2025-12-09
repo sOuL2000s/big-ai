@@ -9,6 +9,22 @@ import AuthGate from '@/components/ui/AuthGate';
 import ConversationModeOverlay from '@/components/ConversationModeOverlay';
 import { useTheme } from '@/components/providers/ThemeContext';
 
+// Helper function to determine initial mobile state
+const getInitialMobileState = () => {
+    if (typeof window === 'undefined') {
+        // Default to false (desktop mode) during SSR
+        return false;
+    }
+    return window.innerWidth < 768;
+};
+
+// Helper function to determine initial sidebar state
+const getInitialSidebarState = () => {
+    // If not mobile, sidebar should be open by default
+    return !getInitialMobileState();
+};
+
+
 export default function HomePage() {
   const { user, loading: authLoading } = useAuth();
   const { loadingSettings } = useTheme();
@@ -17,25 +33,35 @@ export default function HomePage() {
   const [refreshSidebarToggle, setRefreshSidebarToggle] = useState(false);
   const [isConversationModeOpen, setIsConversationModeOpen] = useState(false);
   
-  // === NEW RESPONSIVENESS STATE ===
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false); // Default to CLOSED on mobile
-  const [isMobile, setIsMobile] = useState(false);
+  // === RESPONSIVENESS STATE ===
+  // FIX: Initialize state based on the initial check function
+  const [isMobile, setIsMobile] = useState(getInitialMobileState());
+  const [isSidebarOpen, setIsSidebarOpen] = useState(getInitialSidebarState()); 
 
-  // Effect to determine screen size and manage sidebar visibility default
+  // Effect to handle RENDER-TIME RESIZE events only
   useEffect(() => {
     const handleResize = () => {
       const mobile = window.innerWidth < 768; 
-      setIsMobile(mobile);
-      if (!mobile) {
-        setIsSidebarOpen(true); // Always open sidebar on desktop
-      } else {
-        // If resized to mobile, close the sidebar unless it was already open manually
-        setIsSidebarOpen(false); 
+      
+      // Only call setIsMobile if the state actually changes (mobile/desktop boundary crossed)
+      setIsMobile(prevMobile => {
+          if (prevMobile !== mobile) {
+              return mobile;
+          }
+          return prevMobile;
+      });
+      
+      // Logic for desktop: if resized to desktop, ensure sidebar is open
+      if (window.innerWidth >= 768) {
+        setIsSidebarOpen(true); 
       }
+      // Note: We don't need to explicitly close on mobile resize here, 
+      // as the initial state already handles the default closed state, 
+      // and user input drives mobile collapse/expand.
     };
 
     window.addEventListener('resize', handleResize);
-    handleResize(); // Initial check
+    // Initial check is now handled by useState initializers, no need for handleResize() here.
 
     return () => window.removeEventListener('resize', handleResize);
   }, []); 
@@ -45,6 +71,7 @@ export default function HomePage() {
     setCurrentChatId(chatId);
     if (isConversationModeOpen) setIsConversationModeOpen(false);
     
+    // Close sidebar on mobile when a chat is selected
     if (isMobile) setIsSidebarOpen(false); 
   };
   
@@ -62,11 +89,25 @@ export default function HomePage() {
 
   // Main application view
   return (
-    // FIX: Ensure the main container is hidden overflow to prevent scroll issues
     <div className="flex h-screen overflow-hidden relative" style={{ backgroundColor: 'var(--bg-primary)' }}>
       
-      {/* 2. Main Chat Area - This needs to take up all space */}
-      {/* On desktop (md:), it takes remaining flex space. On mobile, it takes full width/height. */}
+      {/* 1. Sidebar */}
+      <Sidebar 
+        onSelectChat={handleSelectChat} 
+        currentChatId={currentChatId}
+        onNewMessageSent={handleNewMessageSent}
+        onOpenConversationMode={() => { 
+            setIsConversationModeOpen(true); 
+            if (isMobile) setIsSidebarOpen(false);
+        }} 
+        key={refreshSidebarToggle.toString()} 
+        
+        isSidebarOpen={isSidebarOpen} 
+        onCloseSidebar={() => setIsSidebarOpen(false)} 
+        isMobileView={isMobile}
+      />
+      
+      {/* 2. Main Chat Area */}
       <main className="flex-1 flex flex-col min-w-0 w-full h-full"> 
         <ChatArea 
           chatId={currentChatId}
@@ -78,22 +119,6 @@ export default function HomePage() {
           isMobileView={isMobile}
         />
       </main>
-      
-      {/* 1. Sidebar - Rendered on top of main content on mobile */}
-      <Sidebar 
-        onSelectChat={handleSelectChat} 
-        currentChatId={currentChatId}
-        onNewMessageSent={handleNewMessageSent}
-        onOpenConversationMode={() => { 
-            setIsConversationModeOpen(true); 
-            if (isMobile) setIsSidebarOpen(false);
-        }} 
-        key={refreshSidebarToggle.toString()} 
-        
-        isMobileOpen={isSidebarOpen}
-        onCloseMobile={() => setIsSidebarOpen(false)}
-        isMobileView={isMobile}
-      />
       
       {/* 3. Mobile Overlay Backdrop */}
       {isMobile && isSidebarOpen && (

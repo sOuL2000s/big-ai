@@ -79,7 +79,7 @@ export async function getConversation(chatId: string, userId: string): Promise<C
 }
 
 /**
- * Creates a new conversation and adds the first message.
+ * Creates a new conversation and adds the first user message.
  */
 export async function createConversation(
     userId: string, 
@@ -125,7 +125,8 @@ export async function createConversation(
 }
 
 /**
- * Appends a new user message and the subsequent AI response to an existing conversation.
+ * Appends a new message pair to an existing conversation. 
+ * If isFirstExchange is true, only the model's response is appended, as the user message was saved during creation.
  */
 export async function updateConversation(
     chatId: string, 
@@ -163,13 +164,25 @@ export async function updateConversation(
     const serializedUserMessage = serializeMessage(userMessage);
     const serializedModelMessage = serializeMessage(modelMessage);
 
+    let messagesToAppend: FirestoreMessage[];
+
+    if (isFirstExchange) {
+        // FIX: If it's the first exchange, the user message is already stored by createConversation.
+        // We only append the model response.
+        messagesToAppend = [serializedModelMessage];
+    } else {
+        // Normal exchange: append both user message and model response.
+        messagesToAppend = [serializedUserMessage, serializedModelMessage];
+    }
+
     const updateData: { messages: admin.firestore.FieldValue; updatedAt: number; title?: string } = {
-        messages: admin.firestore.FieldValue.arrayUnion(serializedUserMessage, serializedModelMessage),
+        messages: admin.firestore.FieldValue.arrayUnion(...messagesToAppend),
         updatedAt: now,
     };
 
     if (isFirstExchange) {
-        updateData.title = generateTitle(userText);
+        // Update the title again, though technically handled in create, this ensures it exists
+        updateData.title = generateTitle(userText); 
     }
     
     await docRef.update(updateData);

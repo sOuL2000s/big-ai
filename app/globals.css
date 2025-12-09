@@ -1844,6 +1844,7 @@ body {
     margin-top: 1rem !important;
     margin-bottom: 1rem !important;
     overflow: hidden; /* Contains children border radius */
+    max-width: 100%; /* FIX: Constrain the wrapper */
 }
 
 /* Code block container (standard markdown pre tag) */
@@ -1855,6 +1856,7 @@ body {
     padding: 0 !important;
     border-radius: 0 !important;
     overflow-x: auto; /* FIX: Enable horizontal scroll */
+    max-width: 100%; /* FIX: Ensure pre respects parent constraint */
 }
 
 /* Code block header */
@@ -1880,7 +1882,7 @@ body {
     box-sizing: border-box;
     /* FIX: Force content not to wrap for horizontal scrolling */
     white-space: pre !important; 
-    max-width: 1000px;
+    /* Removed redundant max-width: 1000px; */
 }
 
 /* Inline code */

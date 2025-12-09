@@ -58,6 +58,10 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
   
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  
+  // NEW STATE: Tracks if the current chat ID change was due to sending the first message.
+  const [isInitialExchange, setIsInitialExchange] = useState(false); 
+
 
   // NEW: Speech Recognition Hook Integration
   const { isListening, transcript, startListening, stopListening, recognitionSupported, resetTranscript } = useSpeechRecognition({ 
@@ -66,12 +70,10 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           resetTranscript();
       },
       onInterimTranscript: (interimTranscript) => {
-        // Use interim transcript for instant visual feedback
-        setInput(prev => (prev.split(' ')[0] + ' ' + interimTranscript).trim());
+        // We rely on the input state being updated by the hook
       },
       onStart: () => {
-          // Temporarily disable sending when listening starts
-          // We rely on the input state being updated by the hook
+          // No action needed here for this specific fix
       },
       onEnd: () => {
          // Focus on input after listening stops
@@ -82,9 +84,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
   // Combine hook transcript with input state
   useEffect(() => {
-    // If listening and transcript changes, we don't update input directly here, 
-    // the hook manages it via onFinalTranscript and onInterimTranscript handlers provided above.
-    // We update the placeholder dynamically based on listening state.
+    // Dynamic placeholder update
     if (inputRef.current) {
         inputRef.current.placeholder = isLoading 
             ? "Please wait..." 
@@ -109,6 +109,15 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     if (!user) return;
 
     if (chatId) {
+      
+      // FIX 1: Prevent clearing/fetching if this ID change was triggered by the first message being sent.
+      if (isInitialExchange) {
+        setIsInitialExchange(false); // Reset flag
+        setIsHistoryLoading(false);
+        // Do NOT fetch history, rely on current local state 
+        return; 
+      }
+        
       setIsHistoryLoading(true);
       setMessages([]); // Clear old messages
       
@@ -143,7 +152,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
       setAttachments([]); 
       setIsHistoryLoading(false);
     }
-  }, [chatId, user, getIdToken]);
+  }, [chatId, user, getIdToken, isInitialExchange]); // Add isInitialExchange to dependency array
 
   // --- Utility Functions ---
   const addMessage = useCallback((msg: ChatMessage) => {
@@ -312,6 +321,8 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
       
       const newChatId = response.headers.get('X-Chat-ID');
       if (newChatId && newChatId !== chatId) {
+          // FIX 2: Set flag before updating parent state
+          setIsInitialExchange(true); 
           onChatIdChange(newChatId); 
       }
 
@@ -373,18 +384,16 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     <div className="flex flex-col h-full w-full" style={{backgroundColor: 'var(--bg-primary)'}}>
       <header className="p-4 border-b shadow-sm flex justify-between items-center" style={{backgroundColor: 'var(--header-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}>
         
-        {/* === MOBILE SIDEBAR TOGGLE BUTTON === */}
-        {isMobileView && (
-            <button
-                onClick={onToggleSidebar}
-                className="p-2 rounded-lg transition mr-2 md:hidden"
-                title="Toggle Sidebar"
-                disabled={isLoading || isHistoryLoading}
-                style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
-            >
-                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
-            </button>
-        )}
+        {/* === SIDEBAR TOGGLE BUTTON (Visible on all screens now) === */}
+        <button
+            onClick={onToggleSidebar}
+            className="p-2 rounded-lg transition mr-2"
+            title="Toggle Sidebar"
+            disabled={isLoading || isHistoryLoading}
+            style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
+        >
+             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
+        </button>
         {/* ================================== */}
 
         <h1 className="font-semibold truncate max-w-[calc(100%-80px)]">

@@ -279,7 +279,7 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                 
                 {/* Bubble Content */}
                 <div
-                    className={`p-3 rounded-xl shadow-md transition duration-300 ease-in-out break-words relative ${
+                    className={`p-3 rounded-xl shadow-md transition duration-300 ease-in-out break-words relative w-full ${
                         isUser
                             ? 'rounded-bl-none'
                             : 'rounded-tr-none border'
@@ -344,7 +344,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                 </div>
                 
                 {/* User Avatar / Role Indicator (User) */}
-                <div className={`p-2 rounded-full text-white ml-3 shrink-0 self-start ${isUser ? 'bg-gray-500' : 'hidden'}`} style={{backgroundColor: 'var(--text-primary)'}}>
+                <div 
+                    className={`p-2 rounded-full ml-3 shrink-0 self-start ${isUser ? '' : 'hidden'}`} 
+                    style={{
+                        // FIX: Use theme variables for dynamic contrast
+                        backgroundColor: 'var(--text-primary)', 
+                        color: 'var(--bg-primary)'
+                    }}
+                >
                     {isUser ? 'You' : ''}
                 </div>
             </div>

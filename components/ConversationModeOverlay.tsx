@@ -162,8 +162,21 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
             });
             
             if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.error || `API returned status ${response.status}`);
+                let errorMsg = `API responded with status ${response.status}.`;
+                
+                // Attempt to read the detailed JSON error payload
+                if (response.headers.get('Content-Type')?.includes('application/json')) {
+                    try {
+                        const errorData = await response.json();
+                        errorMsg = errorData.error || errorMsg;
+                        if (errorData.details) {
+                            errorMsg += `\n\nDebug Details: ${errorData.details}`;
+                        }
+                    } catch {}
+                }
+
+                // Throw error with extracted message
+                throw new Error(errorMsg);
             }
 
             const newChatId = response.headers.get('X-Chat-ID');
@@ -190,7 +203,13 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
         } catch (error) {
             console.error('Conversation AI Error:', error);
             setStatus('error');
-            setStatusMessage(`AI Error: ${error instanceof Error ? error.message : 'Unknown communication error.'}`);
+            // Show the detailed error message captured above, stripping debug details for the small overlay
+            const message = error instanceof Error 
+                ? error.message.replace(/\n\n--- Debug Details ---.*/s, '') 
+                : 'Unknown communication error.';
+                
+            setStatusMessage(`AI Error: ${message}`);
+
             setTimeout(() => {
                 if (recognitionSupported) {
                     setStatus('idle');

@@ -136,11 +136,21 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
             }));
             setMessages(clientMessages);
           } else {
-            console.error("Failed to load conversation:", chatId);
-            setMessages([{ id: uuidvv4(), text: 'Failed to load conversation history. Check console for details.', role: 'model', timestamp: new Date() } as ChatMessage]);
+            // Display detailed error if history load fails
+            let errorMsg = 'Failed to load conversation history.';
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorMsg;
+                if (errorData.details) {
+                    errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
+                }
+            } catch {}
+            console.error("Failed to load conversation:", errorMsg);
+            setMessages([{ id: uuidvv4(), text: `Error loading history: ${errorMsg}`, role: 'model', timestamp: new Date() } as ChatMessage]);
           }
         } catch (error) {
           console.error("Error fetching chat history:", error);
+           setMessages([{ id: uuidvv4(), text: `Error fetching history: Network connection failed.`, role: 'model', timestamp: new Date() } as ChatMessage]);
         } finally {
           setIsHistoryLoading(false);
         }
@@ -186,7 +196,10 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
       }
       return prev;
     });
-    onNewMessageSent(); // Notify parent to refresh sidebar
+    // Only refresh sidebar if the message was successful (not an immediate error response)
+    if (!finalText.startsWith('Error') && !finalText.startsWith('Sorry, Big AI ran into an internal error.')) {
+        onNewMessageSent(); 
+    }
   }, [onNewMessageSent]);
 
   // --- Input and UI Handlers ---
@@ -308,17 +321,44 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           finalizeBotMessage('Session expired. Please log out and log back in.');
           return;
       }
-      if (!response.ok || !response.body) {
-        // Attempt to read error body if available
+      
+      // Check if response is NOT OK and is JSON (indicating an error payload)
+      if (!response.ok && response.headers.get('Content-Type')?.includes('application/json')) {
         let errorMsg = 'Sorry, Big AI ran into an internal error.';
+        
         try {
             const errorData = await response.json();
-            errorMsg = errorData.error || errorMsg;
-        } catch {}
-        finalizeBotMessage(errorMsg);
+            
+            // Prioritize the detailed error field from the server
+            errorMsg = errorData.error || `Server responded with status ${response.status}.`;
+            
+            // Include details (stack trace) if provided by the server (only in development)
+            if (errorData.details) {
+                 errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
+            }
+
+        } catch (jsonError) {
+             // Fallback if JSON parsing fails
+             errorMsg = `Server responded with status ${response.status}. Could not read error details (JSON parse failure).`;
+        }
+        
+        finalizeBotMessage(`Error: ${errorMsg}`);
         return; 
       }
       
+      // If response is not OK, but also not JSON (e.g., streaming API returned error, but we expect text/plain)
+      if (!response.ok) {
+        const textError = await response.text();
+        finalizeBotMessage(`Error: Server responded with status ${response.status}. Raw Response: ${textError.substring(0, 200)}`);
+        return;
+      }
+      
+      if (!response.body) {
+          finalizeBotMessage('Error: Response body missing from successful stream connection.');
+          return;
+      }
+
+
       const newChatId = response.headers.get('X-Chat-ID');
       if (newChatId && newChatId !== chatId) {
           // FIX 2: Set flag before updating parent state
@@ -356,7 +396,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
     } catch (error) {
       console.error('Error fetching AI response:', error);
-      finalizeBotMessage('Sorry, Big AI ran into a communication error.');
+      finalizeBotMessage(`Error fetching AI response: Network or communication failed.`);
     } finally {
       setIsLoading(false);
     }

@@ -1,51 +1,4 @@
 
---- START FILE: .gitignore ---
-
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-package-lock.json
-
---- END FILE: .gitignore ---
-
 --- START FILE: eslint.config.mjs ---
 
 import { defineConfig, globalIgnores } from "eslint/config";
@@ -3250,7 +3203,7 @@ const renderer = new marked.Renderer();
 renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped?: boolean }): string => {
     const language = lang || 'plaintext';
     // Marked escapes HTML entities; we need to unescape for Prism to work correctly.
-    const unescapedCode = text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+    const unescapedCode = text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"').replace(/'/g, "'");
     
     const header = `
         <div class="code-block-header flex justify-between items-center">
@@ -3458,14 +3411,14 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                     />
 
                     {/* Message Actions (Copy/Dictate) */}
-                    <div className="absolute bottom-1 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg" 
+                    <div className="absolute z-10 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg" 
                         style={{
                             backgroundColor: 'var(--header-bg)', 
                             border: '1px solid var(--border-color)',
                             // Use ternary operator to position the action buttons correctly
                             right: isUser ? '10px' : 'auto',
                             left: isUser ? 'auto' : '10px',
-                            bottom: '10px',
+                            bottom: '-15px', // Adjusted to hang 15px below the bubble's bottom edge
                         }}
                     >
                         
@@ -4032,7 +3985,16 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
                 
                 {/* Status Message */}
                 {statusMessage && (
-                    <div className={`p-3 mb-4 text-sm rounded-lg text-center ${statusMessage.includes('saved') || statusMessage.includes('activated') ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+                    <div 
+                        className={`p-3 mb-4 text-sm rounded-lg text-center font-medium`}
+                        style={{
+                            backgroundColor: 'var(--sidebar-item-hover)',
+                            color: statusMessage.includes('saved') || statusMessage.includes('activated') 
+                                ? 'var(--accent-success)' 
+                                : 'var(--accent-error)',
+                            border: `1px solid ${statusMessage.includes('saved') || statusMessage.includes('activated') ? 'var(--accent-success)' : 'var(--accent-error)'}`
+                        }}
+                    >
                         {statusMessage}
                     </div>
                 )}
@@ -4170,6 +4132,7 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
         </div>
     );
 }
+
 
 --- END FILE: components\PromptManager.tsx ---
 
@@ -5911,7 +5874,7 @@ export { app };
 
 --- END FILE: utils\firebase.ts ---
 
----------------------------------------------------------------------------------------------
+-------------------------------------------------------------------------------------------------
 
-is it possible to make the prompt and api configuration modal, the prompt manager modal to look good? because the main issue is if it has to stay within the sidebar then make it adjust in there or is it possible to simply take the modal outside to the center of the main screen when opened? i would like to do whatever looks best.
-can you tell me how i can manage the message actions(copy message and dictate message) buttons so that they don't block the message content while appearing when hovered? because when a code block is there it's blocking the horizontal scroll bar on the code blocks and sometimes message content as well. i want to know how to make it come a little more below than it's right now?
+whenever there's an error in providing response it says big ai ran into an internal problem, i want proper clarity and and i need the chatbot to show clear exact output describing what truly happened because only then i'll be able to fix the issue.
+Send me the only ready to go codes and the necessary instructions and explanations so i can just copy-paste and test them.

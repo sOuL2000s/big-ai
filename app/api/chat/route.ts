@@ -14,6 +14,25 @@ interface ChatRequest {
     files?: FileAttachment[];
 }
 
+// Helper function to create verbose error response
+const createErrorResponse = (error: unknown, defaultMessage: string, status: number) => {
+    let errorMessage = defaultMessage;
+    let errorDetails: string | undefined = undefined;
+
+    if (error instanceof Error) {
+        errorMessage = `Internal Server Error: ${error.message}`;
+        // Only expose stack trace in non-production environments
+        errorDetails = process.env.NODE_ENV !== 'production' ? error.stack : undefined;
+    } else if (typeof error === 'string') {
+        errorMessage = `Internal Server Error: ${error}`;
+    }
+
+    return NextResponse.json({ 
+        error: errorMessage,
+        details: errorDetails
+    }, { status });
+};
+
 // --- GET: Load existing conversation history ---
 export async function GET(req: NextRequest) {
     const userId = await getAuthId(req);
@@ -40,7 +59,7 @@ export async function GET(req: NextRequest) {
 
     } catch (error) {
         console.error('API GET Error:', error);
-        return NextResponse.json({ error: 'Failed to retrieve chat history' }, { status: 500 });
+        return createErrorResponse(error, 'Failed to retrieve chat history', 500);
     }
 }
 
@@ -65,10 +84,11 @@ export async function DELETE(req: NextRequest) {
 
     } catch (error) {
         console.error('API DELETE Error:', error);
+        // Specialized handling for known authorization errors from lib/history
         if (error instanceof Error && error.message.includes('Unauthorized')) {
-             return NextResponse.json({ error: 'Unauthorized or conversation not found' }, { status: 403 });
+             return NextResponse.json({ error: 'Unauthorized chat deletion attempt' }, { status: 403 });
         }
-        return NextResponse.json({ error: 'Failed to delete chat history' }, { status: 500 });
+        return createErrorResponse(error, 'Failed to delete chat history', 500);
     }
 }
 
@@ -181,6 +201,6 @@ export async function POST(req: NextRequest) {
 
   } catch (error) {
     console.error('FATAL API Error:', error);
-    return NextResponse.json({ error: 'Failed to process chat request.' }, { status: 500 });
+    return createErrorResponse(error, 'Failed to process chat request.', 500);
   }
 }

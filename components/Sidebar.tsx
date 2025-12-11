@@ -141,6 +141,25 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
     const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setTheme(e.target.value);
     };
+    
+    // START NEW: Theme Randomizer Logic
+    const handleRandomTheme = () => {
+        if (availableThemes.length === 0) return;
+        
+        const currentThemeId = themeName;
+        let randomIndex;
+        let randomTheme;
+
+        // Ensure we don't pick the current theme again
+        do {
+            randomIndex = Math.floor(Math.random() * availableThemes.length);
+            randomTheme = availableThemes[randomIndex];
+        } while (randomTheme.id === currentThemeId && availableThemes.length > 1);
+
+        setTheme(randomTheme.id);
+    };
+    // END NEW
+    
 
     const handleModeToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
         setMode(e.target.checked ? 'dark' : 'light');
@@ -311,19 +330,34 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                             </select>
                         </div>
 
-                        {/* Theme Selector (Uses the expanded list from ThemeContext) */}
+                        {/* Theme Selector (MODIFIED HERE) */}
                         <div>
                             <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>Theme</label>
-                            <select
-                                value={themeName}
-                                onChange={handleThemeChange}
-                                className="w-full p-2 rounded-lg border text-sm"
-                                style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
-                            >
-                                {availableThemes.map(theme => (
-                                    <option key={theme.id} value={theme.id}>{theme.name}</option>
-                                ))}
-                            </select>
+                            {/* New flex container for select and button */}
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={themeName}
+                                    onChange={handleThemeChange}
+                                    className="w-full p-2 rounded-lg border text-sm"
+                                    style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
+                                >
+                                    {availableThemes.map(theme => (
+                                        <option key={theme.id} value={theme.id}>{theme.name}</option>
+                                    ))}
+                                </select>
+                                
+                                {/* NEW Randomizer Button */}
+                                <button
+                                    type="button"
+                                    onClick={handleRandomTheme}
+                                    title="Randomize Theme"
+                                    className="p-2 rounded-lg transition shrink-0"
+                                    style={{backgroundColor: 'var(--accent-secondary)', color: 'var(--text-primary)'}}
+                                >
+                                    {/* Icon for Shuffle/Random */}
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0012 4.072v1.173a6.83 6.83 0 017.398 6.643M20 20v-5h-.581m-15.357-2A8.001 8.001 0 0012 19.928v-1.173a6.83 6.83 0 01-7.397-6.643M4 12h16"/></svg>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Dark/Light Mode Toggle */}

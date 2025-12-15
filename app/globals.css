@@ -1,8 +1,7 @@
 /* app/globals.css */
 @import "tailwindcss";
 
-/* Import PrismJS themes */
-@import 'prismjs/themes/prism-tomorrow.css'; /* Using 'tomorrow' for a modern, sleek dark look */
+/* REMOVED: Import PrismJS themes */
 
 /*
  * ===================================================================
@@ -1871,10 +1870,10 @@ body {
     align-items: center;
 }
 
-/* Code content inside pre (Prism.js applies most styling here) */
+/* Code content inside pre (SIMPLE STYLING - NO PRISM) */
 .message-content pre code {
-    /* Override Prism's default padding/margin/background/text settings */
-    color: var(--text-primary); /* Use theme color for text */
+    /* Use theme color for text */
+    color: var(--text-primary) !important; 
     display: block;
     padding: 1rem !important; /* Padding for the code content */
     background: transparent !important; /* Use container background, not code background */
@@ -1882,7 +1881,7 @@ body {
     box-sizing: border-box;
     /* FIX: Force content not to wrap for horizontal scrolling */
     white-space: pre !important; 
-    /* Removed redundant max-width: 1000px; */
+    font-family: 'Fira Code', 'Consolas', monospace; /* Set a clean monospace font */
 }
 
 /* Inline code */

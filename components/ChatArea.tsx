@@ -1,7 +1,7 @@
 // components/ChatArea.tsx
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef, ChangeEvent, DragEvent as ReactDragEvent, KeyboardEvent } from 'react';
+import React, { useState, useCallback, useEffect, useRef, ChangeEvent, DragEvent as ReactDragEvent, KeyboardEvent, useMemo } from 'react';
 import { ChatMessage, Conversation, FileAttachment } from '@/types/chat';
 import ChatBubble from './ChatBubble'; 
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -14,15 +14,13 @@ const BOT_PENDING_ID = 'bot-pending';
 interface ChatAreaProps {
     chatId: string | undefined;
     onChatIdChange: (newChatId: string) => void;
-    onNewMessageSent: () => void; // Trigger sidebar refresh
+    onNewMessageSent: () => void;
     onOpenConversationMode: () => void;
-    // === NEW PROPS ===
     onToggleSidebar: () => void;
     isMobileView: boolean;
-    // =================
 }
 
-// Utility to convert file to Base64
+// Utility to convert file to Base64 (kept unchanged)
 const fileToBase64 = (file: File): Promise<FileAttachment> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -46,12 +44,19 @@ const fileToBase64 = (file: File): Promise<FileAttachment> => {
 };
 
 
-export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onOpenConversationMode, onToggleSidebar, isMobileView }: ChatAreaProps) {
+export default function ChatArea({ 
+    chatId, 
+    onChatIdChange, 
+    onNewMessageSent, 
+    onOpenConversationMode, 
+    onToggleSidebar, 
+    isMobileView 
+}: ChatAreaProps) {
   const { user, getIdToken } = useAuth();
   const { settings } = useTheme();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [typedInput, setTypedInput] = useState(''); 
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]); 
@@ -59,112 +64,12 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   
-  // NEW STATE: Tracks if the current chat ID change was due to sending the first message.
   const [isInitialExchange, setIsInitialExchange] = useState(false); 
-
-
-  // NEW: Speech Recognition Hook Integration
-  const { isListening, transcript, startListening, stopListening, recognitionSupported, resetTranscript } = useSpeechRecognition({ 
-      onFinalTranscript: (finalTranscript) => {
-          setInput(prev => (prev.trim() + ' ' + finalTranscript).trim());
-          resetTranscript();
-      },
-      onInterimTranscript: (interimTranscript) => {
-        // We rely on the input state being updated by the hook
-      },
-      onStart: () => {
-          // No action needed here for this specific fix
-      },
-      onEnd: () => {
-         // Focus on input after listening stops
-         inputRef.current?.focus();
-      }
-  });
-
-
-  // Combine hook transcript with input state
-  useEffect(() => {
-    // Dynamic placeholder update
-    if (inputRef.current) {
-        inputRef.current.placeholder = isLoading 
-            ? "Please wait..." 
-            : (isListening 
-                ? "Listening... Speak now." 
-                : (attachments.length > 0 ? `Message Big AI about ${attachments.length} files...` : "Message Big AI..."));
-    }
-  }, [isLoading, isListening, attachments.length]);
   
-  // Dynamic Input Height Adjustment 
-  useEffect(() => {
-    const textarea = inputRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto'; 
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [input]);
+  const initialSpeechInputRef = useRef('');
 
 
-  // --- History Loading Effect ---
-  useEffect(() => {
-    if (!user) return;
-
-    if (chatId) {
-      
-      // FIX 1: Prevent clearing/fetching if this ID change was triggered by the first message being sent.
-      if (isInitialExchange) {
-        setIsInitialExchange(false); // Reset flag
-        setIsHistoryLoading(false);
-        // Do NOT fetch history, rely on current local state 
-        return; 
-      }
-        
-      setIsHistoryLoading(true);
-      setMessages([]); // Clear old messages
-      
-      const fetchChatHistory = async () => {
-        try {
-          const token = await getIdToken();
-          const response = await fetch(`/api/chat?chatId=${chatId}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-          });
-          
-          if (response.ok) {
-            const conversation: Conversation = await response.json();
-            const clientMessages: ChatMessage[] = conversation.messages.map(m => ({
-                ...m,
-                timestamp: new Date(m.timestamp),
-            }));
-            setMessages(clientMessages);
-          } else {
-            // Display detailed error if history load fails
-            let errorMsg = 'Failed to load conversation history.';
-            try {
-                const errorData = await response.json();
-                errorMsg = errorData.error || errorMsg;
-                if (errorData.details) {
-                    errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
-                }
-            } catch {}
-            console.error("Failed to load conversation:", errorMsg);
-            setMessages([{ id: uuidvv4(), text: `Error loading history: ${errorMsg}`, role: 'model', timestamp: new Date() } as ChatMessage]);
-          }
-        } catch (error) {
-          console.error("Error fetching chat history:", error);
-           setMessages([{ id: uuidvv4(), text: `Error fetching history: Network connection failed.`, role: 'model', timestamp: new Date() } as ChatMessage]);
-        } finally {
-          setIsHistoryLoading(false);
-        }
-      };
-      fetchChatHistory();
-    } else {
-      // New chat state
-      setMessages([]);
-      setAttachments([]); 
-      setIsHistoryLoading(false);
-    }
-  }, [chatId, user, getIdToken, isInitialExchange]); // Add isInitialExchange to dependency array
-
-  // --- Utility Functions ---
+  // --- Message/Input Utilities (Hoisted for use in useCallback definitions) ---
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, msg]);
   }, []);
@@ -196,18 +101,155 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
       }
       return prev;
     });
-    // Only refresh sidebar if the message was successful (not an immediate error response)
     if (!finalText.startsWith('Error') && !finalText.startsWith('Sorry, Big AI ran into an internal error.')) {
         onNewMessageSent(); 
     }
   }, [onNewMessageSent]);
 
-  // --- Input and UI Handlers ---
+
+  // === Voice Recognition Hook Callbacks ===
+  
+  // NOTE: We rely on the hook returning the current transcript state (`transcript`) live.
+
+  const handleFinalTranscript = useCallback((finalTranscript: string) => {
+      // Merge the final transcript into typedInput
+      const finalMessage = (initialSpeechInputRef.current + ' ' + finalTranscript).trim();
+      setTypedInput(finalMessage);
+      initialSpeechInputRef.current = finalMessage; 
+  }, []); 
+
+  const handleSpeechStart = useCallback(() => {
+      // Store the current text that was in the box
+      const currentInput = typedInput.trim();
+      initialSpeechInputRef.current = currentInput;
+      
+      // CRITICAL FIX: Ensure typedInput is set to the current base input to ensure 
+      // the initial view (mergedInput) correctly shows the existing text + live speech
+      // when the speech starts. If the current input is empty, clear the state.
+      if (!currentInput) {
+           setTypedInput('');
+      } else {
+           // If there's text, we let initialSpeechInputRef hold it, and `transcript` 
+           // will start showing new spoken words.
+      }
+  }, [typedInput]); 
+
+  const handleSpeechEnd = useCallback(() => {
+      inputRef.current?.focus();
+  }, []); 
+  
+  // Need to use inputRef's current value to capture the merged state before erroring/stopping
+  const handleSpeechError = useCallback((error: string) => {
+      console.error("STT Error:", error);
+      if (error.includes('not-allowed')) {
+          alert("Microphone access denied. Please allow microphone access.");
+      } 
+      
+      // CRITICAL FIX: On error, immediately finalize the text based on what is visually in the box
+      const currentLiveInput = inputRef.current?.value || typedInput;
+      setTypedInput(currentLiveInput);
+      initialSpeechInputRef.current = currentLiveInput;
+  }, [typedInput]); 
+
+
+  // --- Wrap the options object in useMemo ---
+  const recognitionOptions = useMemo(() => ({
+      continuous: true, 
+      onFinalTranscript: handleFinalTranscript,
+      onStart: handleSpeechStart,
+      onEnd: handleSpeechEnd,
+      onError: handleSpeechError,
+  }), [handleFinalTranscript, handleSpeechStart, handleSpeechEnd, handleSpeechError]);
+
+  // === Voice Recognition Hook Integration ===
+  const { 
+      isListening, 
+      transcript, 
+      startListening, 
+      stopListening, 
+      recognitionSupported,
+  } = useSpeechRecognition(recognitionOptions);
+
+
+  // Calculate the live input value: typed text + live transcript (if listening)
+  // This value is computed on every render based on mutable ref and state.
+  const mergedInput = isListening 
+    ? (initialSpeechInputRef.current + ' ' + transcript).trim()
+    : typedInput;
+
+
+  // --- History Loading Effect (unchanged) ---
+  useEffect(() => {
+    if (!user) return;
+    // ... (unchanged history loading logic) ...
+    if (chatId) {
+      if (isInitialExchange) {
+        setIsInitialExchange(false); 
+        setIsHistoryLoading(false);
+        return; 
+      }
+        
+      setIsHistoryLoading(true);
+      setMessages([]); 
+      
+      const fetchChatHistory = async () => {
+        try {
+          const token = await getIdToken();
+          const response = await fetch(`/api/chat?chatId=${chatId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const conversation: Conversation = await response.json();
+            const clientMessages: ChatMessage[] = conversation.messages.map(m => ({
+                ...m,
+                timestamp: new Date(m.timestamp),
+            }));
+            setMessages(clientMessages);
+          } else {
+            let errorMsg = 'Failed to load conversation history.';
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorMsg;
+                if (errorData.details) {
+                    errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
+                }
+            } catch {}
+            console.error("Failed to load conversation:", errorMsg);
+            setMessages([{ id: uuidvv4(), text: `Error loading history: ${errorMsg}`, role: 'model', timestamp: new Date() } as ChatMessage]);
+          }
+        } catch (error) {
+          console.error("Error fetching chat history:", error);
+           setMessages([{ id: uuidvv4(), text: `Error fetching history: Network connection failed.`, role: 'model', timestamp: new Date() } as ChatMessage]);
+        } finally {
+          setIsHistoryLoading(false);
+        }
+      };
+      fetchChatHistory();
+    } else {
+      setMessages([]);
+      setAttachments([]); 
+      setIsHistoryLoading(false);
+    }
+  }, [chatId, user, getIdToken, isInitialExchange]); 
+  
+  
+  // === Input and UI Handlers ===
+  
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = e.target.value;
+      
+      if (isListening) {
+          stopListening();
+          // The new value from the manual typing action should be captured by typedInput
+          // after stopListening runs its sync callback (handleFinalTranscript).
+      } 
+      setTypedInput(newValue);
+  };
   
   const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      // Stop listening if Enter is pressed
       if (isListening) stopListening();
       handleSendMessage(e as unknown as React.FormEvent);
     }
@@ -222,11 +264,11 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           if (e.clipboardData?.files) {
               selectedFiles.push(...Array.from(e.clipboardData.files));
           }
-      } else if ('dataTransfer' in e) { // ReactDragEvent<HTMLDivElement>
+      } else if ('dataTransfer' in e) {
           if (e.dataTransfer?.files) {
               selectedFiles.push(...Array.from(e.dataTransfer.files));
           }
-      } else if ('target' in e && (e.target as HTMLInputElement).files) { // ChangeEvent<HTMLInputElement>
+      } else if ('target' in e && (e.target as HTMLInputElement).files) { 
           const target = e.target as HTMLInputElement;
           if (target.files) {
               selectedFiles.push(...Array.from(target.files));
@@ -248,34 +290,42 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
   
   const handleVoiceInputToggle = () => {
       if (isLoading || isHistoryLoading) return;
+      
       if (isListening) {
           stopListening();
       } else {
-          // Clear current text if no attachments exist, otherwise append
-          if (attachments.length === 0) {
-              setInput('');
-          }
-          startListening(input);
+          startListening(typedInput);
       }
   };
 
 
   // --- Main Send Handler ---
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isListening) stopListening();
     
-    const trimmedInput = input.trim();
+    // 1. Ensure listening stops and the text state is finalized.
+    if (isListening) {
+        stopListening();
+    }
+    
+    // Wait for the next tick to ensure state synchronization after stopListening
+    // Although the hook is synchronous, this protects against React batching issues.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // 2. Read the final state of typedInput
+    const trimmedInput = typedInput.trim(); 
     
     if ((!trimmedInput && attachments.length === 0) || isLoading || isHistoryLoading) return;
-
-    // 1. Convert attachments to Base64 payload
+    
+    // 3. Reset state before sending
+    setTypedInput('');
+    initialSpeechInputRef.current = '';
+    
+    // 4. Convert attachments to Base64 payload
     const base64Attachments: FileAttachment[] = await Promise.all(
         attachments.map(file => fileToBase64(file))
     );
     
-    // Check if the user's current settings include a system prompt to be passed to the API
     const globalSystemPrompt = settings?.globalSystemPrompt;
     const streamingEnabled = settings?.streamingEnabled ?? true; 
     
@@ -295,7 +345,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
         timestamp: new Date() 
     } as ChatMessage);
     
-    setInput('');
     setAttachments([]); 
     setIsLoading(true);
 
@@ -312,7 +361,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           message: trimmedInput,
           chatId: chatId, 
           files: base64Attachments, 
-          // Pass the system prompt if this is a NEW chat (API route will use it if chatId is missing)
           globalSystemPrompt: chatId ? undefined : globalSystemPrompt, 
         }),
       });
@@ -322,35 +370,19 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           return;
       }
       
-      // Check if response is NOT OK and is JSON (indicating an error payload)
       if (!response.ok && response.headers.get('Content-Type')?.includes('application/json')) {
         let errorMsg = 'Sorry, Big AI ran into an internal error.';
-        
         try {
             const errorData = await response.json();
-            
-            // Prioritize the detailed error field from the server
             errorMsg = errorData.error || `Server responded with status ${response.status}.`;
-            
-            // Include details (stack trace) if provided by the server (only in development)
             if (errorData.details) {
                  errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
             }
-
-        } catch (jsonError) {
-             // Fallback if JSON parsing fails
-             errorMsg = `Server responded with status ${response.status}. Could not read error details (JSON parse failure).`;
+        } catch (_jsonError) {
+             errorMsg = `Server responded with status ${response.status}. Could not read error details.`;
         }
-        
         finalizeBotMessage(`Error: ${errorMsg}`);
         return; 
-      }
-      
-      // If response is not OK, but also not JSON (e.g., streaming API returned error, but we expect text/plain)
-      if (!response.ok) {
-        const textError = await response.text();
-        finalizeBotMessage(`Error: Server responded with status ${response.status}. Raw Response: ${textError.substring(0, 200)}`);
-        return;
       }
       
       if (!response.body) {
@@ -361,7 +393,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
       const newChatId = response.headers.get('X-Chat-ID');
       if (newChatId && newChatId !== chatId) {
-          // FIX 2: Set flag before updating parent state
           setIsInitialExchange(true); 
           onChatIdChange(newChatId); 
       }
@@ -372,7 +403,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
       // CONDITIONAL STREAMING LOGIC
       if (streamingEnabled) {
-          // Streaming/Typing mode (Read chunk by chunk and update UI)
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -382,13 +412,11 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
             updateBotStreamingMessage(chunk); 
           }
       } else {
-          // Instant response mode (Wait for stream to finish reading entirely)
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             accumulatedText += decoder.decode(value);
           }
-          // Display the final accumulated text all at once
           updateBotStreamingMessage(accumulatedText);
       }
       
@@ -409,6 +437,17 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     }
   }, [messages, isHistoryLoading]);
 
+  // Dynamic Input Height Adjustment (using mergedInput)
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (textarea) {
+      textarea.value = mergedInput;
+      textarea.style.height = 'auto'; 
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [mergedInput]);
+
+
   // --- Render ---
 
   if (isHistoryLoading) {
@@ -424,7 +463,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     <div className="flex flex-col h-full w-full" style={{backgroundColor: 'var(--bg-primary)'}}>
       <header className="p-4 border-b shadow-sm flex justify-between items-center" style={{backgroundColor: 'var(--header-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}>
         
-        {/* === SIDEBAR TOGGLE BUTTON (Visible on all screens now) === */}
+        {/* === SIDEBAR TOGGLE BUTTON === */}
         <button
             onClick={onToggleSidebar}
             className="p-2 rounded-lg transition mr-2"
@@ -434,11 +473,11 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
         >
              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
         </button>
-        {/* ================================== */}
 
         <h1 className="font-semibold truncate max-w-[calc(100%-80px)]">
             {chatId ? messages[0]?.text.substring(0, 50) + '...' : 'New Conversation'}
         </h1>
+        
         {/* Conversation Mode Button in Header */}
         <button
             onClick={onOpenConversationMode}
@@ -529,14 +568,14 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
             <textarea
                 ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
+                value={mergedInput} 
+                onChange={handleInputChange} 
                 onKeyDown={handleKeyPress}
                 onPaste={handleFileSelect as (e: React.ClipboardEvent<HTMLTextAreaElement>) => void} 
                 placeholder={isListening ? "Listening..." : "Message Big AI..."}
                 className="flex-1 p-3 bg-transparent focus:outline-none resize-none overflow-y-auto max-h-[200px]"
                 style={{ minHeight: '48px', color: 'var(--text-primary)' }}
-                disabled={isLoading || isHistoryLoading || isListening}
+                disabled={isLoading || isHistoryLoading} 
                 rows={1}
                 autoFocus
             />
@@ -545,8 +584,8 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
             <button
               type="submit"
               className="px-4 py-3 text-white rounded-r-xl hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              disabled={isLoading || isHistoryLoading || isListening || (!input.trim() && attachments.length === 0)}
-              style={{backgroundColor: 'var(--accent-primary)', color: 'var(--ai-bubble-text)'}} // Use AI text color for contrast on accent background
+              disabled={isLoading || isHistoryLoading || (!mergedInput.trim() && attachments.length === 0)} 
+              style={{backgroundColor: 'var(--accent-primary)', color: 'var(--ai-bubble-text)'}} 
             >
               <svg className="w-5 h-5 transform rotate-45 -mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
             </button>

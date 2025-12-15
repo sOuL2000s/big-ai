@@ -1,51 +1,4 @@
 
---- START FILE: .gitignore ---
-
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
-*.pem
-
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
-package-lock.json
-
---- END FILE: .gitignore ---
-
 --- START FILE: eslint.config.mjs ---
 
 import { defineConfig, globalIgnores } from "eslint/config";
@@ -140,8 +93,7 @@ export default nextConfig;
     "react-dom": "19.2.1",
     "uuid": "^13.0.0",
     "marked": "^17.0.1",
-    "dompurify": "^3.3.0",
-    "prismjs": "^1.30.0"
+    "dompurify": "^3.3.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -149,14 +101,12 @@ export default nextConfig;
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/dompurify": "^3.2.0",
-    "@types/prismjs": "^1.26.5",
     "eslint": "^9",
     "eslint-config-next": "16.0.7",
     "tailwindcss": "^4",
     "typescript": "^5"
   }
 }
-
 
 --- END FILE: package.json ---
 
@@ -224,8 +174,7 @@ websiet link : https://big-ai-chatbot.netlify.app/
 /* app/globals.css */
 @import "tailwindcss";
 
-/* Import PrismJS themes */
-@import 'prismjs/themes/prism-tomorrow.css'; /* Using 'tomorrow' for a modern, sleek dark look */
+/* REMOVED: Import PrismJS themes */
 
 /*
  * ===================================================================
@@ -2094,10 +2043,10 @@ body {
     align-items: center;
 }
 
-/* Code content inside pre (Prism.js applies most styling here) */
+/* Code content inside pre (SIMPLE STYLING - NO PRISM) */
 .message-content pre code {
-    /* Override Prism's default padding/margin/background/text settings */
-    color: var(--text-primary); /* Use theme color for text */
+    /* Use theme color for text */
+    color: var(--text-primary) !important; 
     display: block;
     padding: 1rem !important; /* Padding for the code content */
     background: transparent !important; /* Use container background, not code background */
@@ -2105,7 +2054,7 @@ body {
     box-sizing: border-box;
     /* FIX: Force content not to wrap for horizontal scrolling */
     white-space: pre !important; 
-    /* Removed redundant max-width: 1000px; */
+    font-family: 'Fira Code', 'Consolas', monospace; /* Set a clean monospace font */
 }
 
 /* Inline code */
@@ -2656,7 +2605,7 @@ export async function POST(req: NextRequest) {
 // components/ChatArea.tsx
 'use client';
 
-import React, { useState, useCallback, useEffect, useRef, ChangeEvent, DragEvent as ReactDragEvent, KeyboardEvent } from 'react';
+import React, { useState, useCallback, useEffect, useRef, ChangeEvent, DragEvent as ReactDragEvent, KeyboardEvent, useMemo } from 'react';
 import { ChatMessage, Conversation, FileAttachment } from '@/types/chat';
 import ChatBubble from './ChatBubble'; 
 import { useAuth } from '@/components/providers/AuthProvider';
@@ -2669,15 +2618,13 @@ const BOT_PENDING_ID = 'bot-pending';
 interface ChatAreaProps {
     chatId: string | undefined;
     onChatIdChange: (newChatId: string) => void;
-    onNewMessageSent: () => void; // Trigger sidebar refresh
+    onNewMessageSent: () => void;
     onOpenConversationMode: () => void;
-    // === NEW PROPS ===
     onToggleSidebar: () => void;
     isMobileView: boolean;
-    // =================
 }
 
-// Utility to convert file to Base64
+// Utility to convert file to Base64 (kept unchanged)
 const fileToBase64 = (file: File): Promise<FileAttachment> => {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -2701,12 +2648,19 @@ const fileToBase64 = (file: File): Promise<FileAttachment> => {
 };
 
 
-export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onOpenConversationMode, onToggleSidebar, isMobileView }: ChatAreaProps) {
+export default function ChatArea({ 
+    chatId, 
+    onChatIdChange, 
+    onNewMessageSent, 
+    onOpenConversationMode, 
+    onToggleSidebar, 
+    isMobileView 
+}: ChatAreaProps) {
   const { user, getIdToken } = useAuth();
   const { settings } = useTheme();
   
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [typedInput, setTypedInput] = useState(''); 
   const [isLoading, setIsLoading] = useState(false);
   const [isHistoryLoading, setIsHistoryLoading] = useState(false);
   const [attachments, setAttachments] = useState<File[]>([]); 
@@ -2714,112 +2668,12 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   
-  // NEW STATE: Tracks if the current chat ID change was due to sending the first message.
   const [isInitialExchange, setIsInitialExchange] = useState(false); 
-
-
-  // NEW: Speech Recognition Hook Integration
-  const { isListening, transcript, startListening, stopListening, recognitionSupported, resetTranscript } = useSpeechRecognition({ 
-      onFinalTranscript: (finalTranscript) => {
-          setInput(prev => (prev.trim() + ' ' + finalTranscript).trim());
-          resetTranscript();
-      },
-      onInterimTranscript: (interimTranscript) => {
-        // We rely on the input state being updated by the hook
-      },
-      onStart: () => {
-          // No action needed here for this specific fix
-      },
-      onEnd: () => {
-         // Focus on input after listening stops
-         inputRef.current?.focus();
-      }
-  });
-
-
-  // Combine hook transcript with input state
-  useEffect(() => {
-    // Dynamic placeholder update
-    if (inputRef.current) {
-        inputRef.current.placeholder = isLoading 
-            ? "Please wait..." 
-            : (isListening 
-                ? "Listening... Speak now." 
-                : (attachments.length > 0 ? `Message Big AI about ${attachments.length} files...` : "Message Big AI..."));
-    }
-  }, [isLoading, isListening, attachments.length]);
   
-  // Dynamic Input Height Adjustment 
-  useEffect(() => {
-    const textarea = inputRef.current;
-    if (textarea) {
-      textarea.style.height = 'auto'; 
-      textarea.style.height = `${textarea.scrollHeight}px`;
-    }
-  }, [input]);
+  const initialSpeechInputRef = useRef('');
 
 
-  // --- History Loading Effect ---
-  useEffect(() => {
-    if (!user) return;
-
-    if (chatId) {
-      
-      // FIX 1: Prevent clearing/fetching if this ID change was triggered by the first message being sent.
-      if (isInitialExchange) {
-        setIsInitialExchange(false); // Reset flag
-        setIsHistoryLoading(false);
-        // Do NOT fetch history, rely on current local state 
-        return; 
-      }
-        
-      setIsHistoryLoading(true);
-      setMessages([]); // Clear old messages
-      
-      const fetchChatHistory = async () => {
-        try {
-          const token = await getIdToken();
-          const response = await fetch(`/api/chat?chatId=${chatId}`, {
-              headers: { 'Authorization': `Bearer ${token}` }
-          });
-          
-          if (response.ok) {
-            const conversation: Conversation = await response.json();
-            const clientMessages: ChatMessage[] = conversation.messages.map(m => ({
-                ...m,
-                timestamp: new Date(m.timestamp),
-            }));
-            setMessages(clientMessages);
-          } else {
-            // Display detailed error if history load fails
-            let errorMsg = 'Failed to load conversation history.';
-            try {
-                const errorData = await response.json();
-                errorMsg = errorData.error || errorMsg;
-                if (errorData.details) {
-                    errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
-                }
-            } catch {}
-            console.error("Failed to load conversation:", errorMsg);
-            setMessages([{ id: uuidvv4(), text: `Error loading history: ${errorMsg}`, role: 'model', timestamp: new Date() } as ChatMessage]);
-          }
-        } catch (error) {
-          console.error("Error fetching chat history:", error);
-           setMessages([{ id: uuidvv4(), text: `Error fetching history: Network connection failed.`, role: 'model', timestamp: new Date() } as ChatMessage]);
-        } finally {
-          setIsHistoryLoading(false);
-        }
-      };
-      fetchChatHistory();
-    } else {
-      // New chat state
-      setMessages([]);
-      setAttachments([]); 
-      setIsHistoryLoading(false);
-    }
-  }, [chatId, user, getIdToken, isInitialExchange]); // Add isInitialExchange to dependency array
-
-  // --- Utility Functions ---
+  // --- Message/Input Utilities (Hoisted for use in useCallback definitions) ---
   const addMessage = useCallback((msg: ChatMessage) => {
     setMessages((prev) => [...prev, msg]);
   }, []);
@@ -2851,18 +2705,155 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
       }
       return prev;
     });
-    // Only refresh sidebar if the message was successful (not an immediate error response)
     if (!finalText.startsWith('Error') && !finalText.startsWith('Sorry, Big AI ran into an internal error.')) {
         onNewMessageSent(); 
     }
   }, [onNewMessageSent]);
 
-  // --- Input and UI Handlers ---
+
+  // === Voice Recognition Hook Callbacks ===
+  
+  // NOTE: We rely on the hook returning the current transcript state (`transcript`) live.
+
+  const handleFinalTranscript = useCallback((finalTranscript: string) => {
+      // Merge the final transcript into typedInput
+      const finalMessage = (initialSpeechInputRef.current + ' ' + finalTranscript).trim();
+      setTypedInput(finalMessage);
+      initialSpeechInputRef.current = finalMessage; 
+  }, []); 
+
+  const handleSpeechStart = useCallback(() => {
+      // Store the current text that was in the box
+      const currentInput = typedInput.trim();
+      initialSpeechInputRef.current = currentInput;
+      
+      // CRITICAL FIX: Ensure typedInput is set to the current base input to ensure 
+      // the initial view (mergedInput) correctly shows the existing text + live speech
+      // when the speech starts. If the current input is empty, clear the state.
+      if (!currentInput) {
+           setTypedInput('');
+      } else {
+           // If there's text, we let initialSpeechInputRef hold it, and `transcript` 
+           // will start showing new spoken words.
+      }
+  }, [typedInput]); 
+
+  const handleSpeechEnd = useCallback(() => {
+      inputRef.current?.focus();
+  }, []); 
+  
+  // Need to use inputRef's current value to capture the merged state before erroring/stopping
+  const handleSpeechError = useCallback((error: string) => {
+      console.error("STT Error:", error);
+      if (error.includes('not-allowed')) {
+          alert("Microphone access denied. Please allow microphone access.");
+      } 
+      
+      // CRITICAL FIX: On error, immediately finalize the text based on what is visually in the box
+      const currentLiveInput = inputRef.current?.value || typedInput;
+      setTypedInput(currentLiveInput);
+      initialSpeechInputRef.current = currentLiveInput;
+  }, [typedInput]); 
+
+
+  // --- Wrap the options object in useMemo ---
+  const recognitionOptions = useMemo(() => ({
+      continuous: true, 
+      onFinalTranscript: handleFinalTranscript,
+      onStart: handleSpeechStart,
+      onEnd: handleSpeechEnd,
+      onError: handleSpeechError,
+  }), [handleFinalTranscript, handleSpeechStart, handleSpeechEnd, handleSpeechError]);
+
+  // === Voice Recognition Hook Integration ===
+  const { 
+      isListening, 
+      transcript, 
+      startListening, 
+      stopListening, 
+      recognitionSupported,
+  } = useSpeechRecognition(recognitionOptions);
+
+
+  // Calculate the live input value: typed text + live transcript (if listening)
+  // This value is computed on every render based on mutable ref and state.
+  const mergedInput = isListening 
+    ? (initialSpeechInputRef.current + ' ' + transcript).trim()
+    : typedInput;
+
+
+  // --- History Loading Effect (unchanged) ---
+  useEffect(() => {
+    if (!user) return;
+    // ... (unchanged history loading logic) ...
+    if (chatId) {
+      if (isInitialExchange) {
+        setIsInitialExchange(false); 
+        setIsHistoryLoading(false);
+        return; 
+      }
+        
+      setIsHistoryLoading(true);
+      setMessages([]); 
+      
+      const fetchChatHistory = async () => {
+        try {
+          const token = await getIdToken();
+          const response = await fetch(`/api/chat?chatId=${chatId}`, {
+              headers: { 'Authorization': `Bearer ${token}` }
+          });
+          
+          if (response.ok) {
+            const conversation: Conversation = await response.json();
+            const clientMessages: ChatMessage[] = conversation.messages.map(m => ({
+                ...m,
+                timestamp: new Date(m.timestamp),
+            }));
+            setMessages(clientMessages);
+          } else {
+            let errorMsg = 'Failed to load conversation history.';
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorMsg;
+                if (errorData.details) {
+                    errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
+                }
+            } catch {}
+            console.error("Failed to load conversation:", errorMsg);
+            setMessages([{ id: uuidvv4(), text: `Error loading history: ${errorMsg}`, role: 'model', timestamp: new Date() } as ChatMessage]);
+          }
+        } catch (error) {
+          console.error("Error fetching chat history:", error);
+           setMessages([{ id: uuidvv4(), text: `Error fetching history: Network connection failed.`, role: 'model', timestamp: new Date() } as ChatMessage]);
+        } finally {
+          setIsHistoryLoading(false);
+        }
+      };
+      fetchChatHistory();
+    } else {
+      setMessages([]);
+      setAttachments([]); 
+      setIsHistoryLoading(false);
+    }
+  }, [chatId, user, getIdToken, isInitialExchange]); 
+  
+  
+  // === Input and UI Handlers ===
+  
+  const handleInputChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+      const newValue = e.target.value;
+      
+      if (isListening) {
+          stopListening();
+          // The new value from the manual typing action should be captured by typedInput
+          // after stopListening runs its sync callback (handleFinalTranscript).
+      } 
+      setTypedInput(newValue);
+  };
   
   const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      // Stop listening if Enter is pressed
       if (isListening) stopListening();
       handleSendMessage(e as unknown as React.FormEvent);
     }
@@ -2877,11 +2868,11 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           if (e.clipboardData?.files) {
               selectedFiles.push(...Array.from(e.clipboardData.files));
           }
-      } else if ('dataTransfer' in e) { // ReactDragEvent<HTMLDivElement>
+      } else if ('dataTransfer' in e) {
           if (e.dataTransfer?.files) {
               selectedFiles.push(...Array.from(e.dataTransfer.files));
           }
-      } else if ('target' in e && (e.target as HTMLInputElement).files) { // ChangeEvent<HTMLInputElement>
+      } else if ('target' in e && (e.target as HTMLInputElement).files) { 
           const target = e.target as HTMLInputElement;
           if (target.files) {
               selectedFiles.push(...Array.from(target.files));
@@ -2903,34 +2894,42 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
   
   const handleVoiceInputToggle = () => {
       if (isLoading || isHistoryLoading) return;
+      
       if (isListening) {
           stopListening();
       } else {
-          // Clear current text if no attachments exist, otherwise append
-          if (attachments.length === 0) {
-              setInput('');
-          }
-          startListening(input);
+          startListening(typedInput);
       }
   };
 
 
   // --- Main Send Handler ---
-
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isListening) stopListening();
     
-    const trimmedInput = input.trim();
+    // 1. Ensure listening stops and the text state is finalized.
+    if (isListening) {
+        stopListening();
+    }
+    
+    // Wait for the next tick to ensure state synchronization after stopListening
+    // Although the hook is synchronous, this protects against React batching issues.
+    await new Promise(resolve => setTimeout(resolve, 0));
+    
+    // 2. Read the final state of typedInput
+    const trimmedInput = typedInput.trim(); 
     
     if ((!trimmedInput && attachments.length === 0) || isLoading || isHistoryLoading) return;
-
-    // 1. Convert attachments to Base64 payload
+    
+    // 3. Reset state before sending
+    setTypedInput('');
+    initialSpeechInputRef.current = '';
+    
+    // 4. Convert attachments to Base64 payload
     const base64Attachments: FileAttachment[] = await Promise.all(
         attachments.map(file => fileToBase64(file))
     );
     
-    // Check if the user's current settings include a system prompt to be passed to the API
     const globalSystemPrompt = settings?.globalSystemPrompt;
     const streamingEnabled = settings?.streamingEnabled ?? true; 
     
@@ -2950,7 +2949,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
         timestamp: new Date() 
     } as ChatMessage);
     
-    setInput('');
     setAttachments([]); 
     setIsLoading(true);
 
@@ -2967,7 +2965,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           message: trimmedInput,
           chatId: chatId, 
           files: base64Attachments, 
-          // Pass the system prompt if this is a NEW chat (API route will use it if chatId is missing)
           globalSystemPrompt: chatId ? undefined : globalSystemPrompt, 
         }),
       });
@@ -2977,35 +2974,19 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
           return;
       }
       
-      // Check if response is NOT OK and is JSON (indicating an error payload)
       if (!response.ok && response.headers.get('Content-Type')?.includes('application/json')) {
         let errorMsg = 'Sorry, Big AI ran into an internal error.';
-        
         try {
             const errorData = await response.json();
-            
-            // Prioritize the detailed error field from the server
             errorMsg = errorData.error || `Server responded with status ${response.status}.`;
-            
-            // Include details (stack trace) if provided by the server (only in development)
             if (errorData.details) {
                  errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
             }
-
-        } catch (jsonError) {
-             // Fallback if JSON parsing fails
-             errorMsg = `Server responded with status ${response.status}. Could not read error details (JSON parse failure).`;
+        } catch (_jsonError) {
+             errorMsg = `Server responded with status ${response.status}. Could not read error details.`;
         }
-        
         finalizeBotMessage(`Error: ${errorMsg}`);
         return; 
-      }
-      
-      // If response is not OK, but also not JSON (e.g., streaming API returned error, but we expect text/plain)
-      if (!response.ok) {
-        const textError = await response.text();
-        finalizeBotMessage(`Error: Server responded with status ${response.status}. Raw Response: ${textError.substring(0, 200)}`);
-        return;
       }
       
       if (!response.body) {
@@ -3016,7 +2997,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
       const newChatId = response.headers.get('X-Chat-ID');
       if (newChatId && newChatId !== chatId) {
-          // FIX 2: Set flag before updating parent state
           setIsInitialExchange(true); 
           onChatIdChange(newChatId); 
       }
@@ -3027,7 +3007,6 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
       // CONDITIONAL STREAMING LOGIC
       if (streamingEnabled) {
-          // Streaming/Typing mode (Read chunk by chunk and update UI)
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
@@ -3037,13 +3016,11 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
             updateBotStreamingMessage(chunk); 
           }
       } else {
-          // Instant response mode (Wait for stream to finish reading entirely)
           while (true) {
             const { done, value } = await reader.read();
             if (done) break;
             accumulatedText += decoder.decode(value);
           }
-          // Display the final accumulated text all at once
           updateBotStreamingMessage(accumulatedText);
       }
       
@@ -3064,6 +3041,17 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     }
   }, [messages, isHistoryLoading]);
 
+  // Dynamic Input Height Adjustment (using mergedInput)
+  useEffect(() => {
+    const textarea = inputRef.current;
+    if (textarea) {
+      textarea.value = mergedInput;
+      textarea.style.height = 'auto'; 
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [mergedInput]);
+
+
   // --- Render ---
 
   if (isHistoryLoading) {
@@ -3079,7 +3067,7 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
     <div className="flex flex-col h-full w-full" style={{backgroundColor: 'var(--bg-primary)'}}>
       <header className="p-4 border-b shadow-sm flex justify-between items-center" style={{backgroundColor: 'var(--header-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}>
         
-        {/* === SIDEBAR TOGGLE BUTTON (Visible on all screens now) === */}
+        {/* === SIDEBAR TOGGLE BUTTON === */}
         <button
             onClick={onToggleSidebar}
             className="p-2 rounded-lg transition mr-2"
@@ -3089,11 +3077,11 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
         >
              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
         </button>
-        {/* ================================== */}
 
         <h1 className="font-semibold truncate max-w-[calc(100%-80px)]">
             {chatId ? messages[0]?.text.substring(0, 50) + '...' : 'New Conversation'}
         </h1>
+        
         {/* Conversation Mode Button in Header */}
         <button
             onClick={onOpenConversationMode}
@@ -3184,14 +3172,14 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
 
             <textarea
                 ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
+                value={mergedInput} 
+                onChange={handleInputChange} 
                 onKeyDown={handleKeyPress}
                 onPaste={handleFileSelect as (e: React.ClipboardEvent<HTMLTextAreaElement>) => void} 
                 placeholder={isListening ? "Listening..." : "Message Big AI..."}
                 className="flex-1 p-3 bg-transparent focus:outline-none resize-none overflow-y-auto max-h-[200px]"
                 style={{ minHeight: '48px', color: 'var(--text-primary)' }}
-                disabled={isLoading || isHistoryLoading || isListening}
+                disabled={isLoading || isHistoryLoading} 
                 rows={1}
                 autoFocus
             />
@@ -3200,8 +3188,8 @@ export default function ChatArea({ chatId, onChatIdChange, onNewMessageSent, onO
             <button
               type="submit"
               className="px-4 py-3 text-white rounded-r-xl hover:opacity-90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
-              disabled={isLoading || isHistoryLoading || isListening || (!input.trim() && attachments.length === 0)}
-              style={{backgroundColor: 'var(--accent-primary)', color: 'var(--ai-bubble-text)'}} // Use AI text color for contrast on accent background
+              disabled={isLoading || isHistoryLoading || (!mergedInput.trim() && attachments.length === 0)} 
+              style={{backgroundColor: 'var(--accent-primary)', color: 'var(--ai-bubble-text)'}} 
             >
               <svg className="w-5 h-5 transform rotate-45 -mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path></svg>
             </button>
@@ -3224,18 +3212,7 @@ import { ChatMessage, FileAttachment } from '@/types/chat';
 // External Libraries for Markdown Rendering
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import Prism from 'prismjs';
-// Removed: import 'prismjs/themes/prism-dark.css'; // Now imported in globals.css for global application
-
-// Import specific Prism languages needed
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-markup';
-
+// NOTE: PrismJS imports removed.
 
 // --- TTS / DICTATION UTILITY (Client-side implementation) ---
 // Global state for TTS to ensure only one message is speaking at a time
@@ -3303,20 +3280,32 @@ const toggleSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButton
     }
 };
 
+// Helper function to explicitly HTML escape code content for literal display
+const escapeHtml = (unsafe: string): string => {
+    return unsafe.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+}
+
+
 // --- MARKED CUSTOM RENDERER ---
 const renderer = new marked.Renderer();
 
-// Custom code block renderer
+// Custom code block renderer (Now without Prism.js logic, but with correct HTML escaping)
 renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped?: boolean }): string => {
     const language = lang || 'plaintext';
-    // Marked escapes HTML entities; we need to unescape for Prism to work correctly.
-    const unescapedCode = text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"').replace(/'/g, "'");
+    
+    // We use the raw text for copying (encoded) and the escaped text for display
+    const rawCodeForCopy = text; 
+    const escapedCodeForDisplay = escapeHtml(text);
     
     const header = `
         <div class="code-block-header flex justify-between items-center">
             <span class="text-xs font-semibold uppercase" style="color: var(--text-secondary);">${language}</span>
             <button type="button" class="copy-button p-1 rounded transition flex items-center gap-1 text-xs" 
-                data-code="${encodeURIComponent(unescapedCode)}" 
+                data-code="${encodeURIComponent(rawCodeForCopy)}" 
                 style="color: var(--text-secondary); padding: 0.25rem 0.5rem;">
                 <span data-icon="clipboard" style="color: var(--text-secondary);">${COPY_ICON}</span>
                 <span data-text="Copy">Copy</span>
@@ -3324,12 +3313,11 @@ renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped
         </div>
     `;
     
-    // We wrap the standard <pre> tag in the .code-block-container defined in CSS
-    // The inner <pre><code> is where Prism.js applies its magic
+    // Inserting escaped content directly into <code>
     return `
         <div class="code-block-container" data-lang="${language}">
             ${header}
-            <pre><code class="language-${language}">${unescapedCode}</code></pre>
+            <pre><code>${escapedCodeForDisplay}</code></pre>
         </div>
     `;
 };
@@ -3358,7 +3346,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
     const sanitizedHtml = useMemo(() => {
         if (isUser) {
             // Only convert simple line breaks to <p> tags for cleaner display of user input
-            // NOTE: Must sanitize before applying manual line breaks if using DOMPurify
             const safeText = DOMPurify.sanitize(message.text);
             return `<p>${safeText.replace(/\n/g, '<br/>')}</p>`;
         }
@@ -3368,20 +3355,11 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
         return DOMPurify.sanitize(html as string);
     }, [message.text, isUser]);
 
-    // Apply syntax highlighting and copy listeners after rendering
+    // Apply copy listeners after rendering (NO SYNTAX HIGHLIGHTING)
     useEffect(() => {
         if (contentRef.current && !isUser) {
-            // 1. Syntax highlighting
-            contentRef.current.querySelectorAll('pre code').forEach((block) => {
-                try {
-                    // This is client-side code, Prism should be globally available via imported modules
-                    Prism.highlightElement(block);
-                } catch (e) {
-                    console.error("Prism highlighting failed:", e);
-                }
-            });
             
-            // 2. Setup Copy Listeners for code blocks
+            // 1. Setup Copy Listeners for code blocks
             contentRef.current.querySelectorAll('.copy-button').forEach(button => {
                 const encodedCode = button.getAttribute('data-code');
                 if (!encodedCode) return;
@@ -3522,10 +3500,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                         style={{
                             backgroundColor: 'var(--header-bg)', 
                             border: '1px solid var(--border-color)',
-                            // Use ternary operator to position the action buttons correctly
                             right: isUser ? '10px' : 'auto',
                             left: isUser ? 'auto' : '10px',
-                            bottom: '-15px', // Adjusted to hang 15px below the bubble's bottom edge
+                            bottom: '-15px', 
                         }}
                     >
                         
@@ -3534,10 +3511,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                             ref={copyButtonRef}
                             onClick={handleCopyText} 
                             title="Copy Message"
-                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" // Added flex classes
+                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" 
                             style={{color: 'var(--text-secondary)'}}
                         >
-                            {/* FIX: Explicitly set stroke and color for SVG consistency */}
                             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
                         </button>
 
@@ -3547,12 +3523,10 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                                 ref={dictateButtonRef}
                                 onClick={() => toggleSpeech(message.text, dictateButtonRef)}
                                 title="Dictate Message (TTS)"
-                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" // Added flex classes
+                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" 
                                 style={{color: 'var(--text-secondary)'}}
                             >
                                 <span data-icon="tts" className='flex items-center justify-center'>
-                                    {/* Default Dictate Icon */}
-                                    {/* FIX: Explicitly set stroke and color for SVG consistency */}
                                     <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
                                 </span>
                             </button>
@@ -3564,7 +3538,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                 <div 
                     className={`p-2 rounded-full ml-3 shrink-0 self-start ${isUser ? '' : 'hidden'}`} 
                     style={{
-                        // FIX: Use theme variables for dynamic contrast
                         backgroundColor: 'var(--text-primary)', 
                         color: 'var(--bg-primary)'
                     }}
@@ -4583,6 +4556,25 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
     const handleThemeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
         setTheme(e.target.value);
     };
+    
+    // START NEW: Theme Randomizer Logic
+    const handleRandomTheme = () => {
+        if (availableThemes.length === 0) return;
+        
+        const currentThemeId = themeName;
+        let randomIndex;
+        let randomTheme;
+
+        // Ensure we don't pick the current theme again
+        do {
+            randomIndex = Math.floor(Math.random() * availableThemes.length);
+            randomTheme = availableThemes[randomIndex];
+        } while (randomTheme.id === currentThemeId && availableThemes.length > 1);
+
+        setTheme(randomTheme.id);
+    };
+    // END NEW
+    
 
     const handleModeToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
         setMode(e.target.checked ? 'dark' : 'light');
@@ -4753,19 +4745,34 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                             </select>
                         </div>
 
-                        {/* Theme Selector (Uses the expanded list from ThemeContext) */}
+                        {/* Theme Selector (MODIFIED HERE) */}
                         <div>
                             <label className="block text-xs font-medium uppercase mb-1" style={{color: 'var(--text-secondary)'}}>Theme</label>
-                            <select
-                                value={themeName}
-                                onChange={handleThemeChange}
-                                className="w-full p-2 rounded-lg border text-sm"
-                                style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
-                            >
-                                {availableThemes.map(theme => (
-                                    <option key={theme.id} value={theme.id}>{theme.name}</option>
-                                ))}
-                            </select>
+                            {/* New flex container for select and button */}
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={themeName}
+                                    onChange={handleThemeChange}
+                                    className="w-full p-2 rounded-lg border text-sm"
+                                    style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
+                                >
+                                    {availableThemes.map(theme => (
+                                        <option key={theme.id} value={theme.id}>{theme.name}</option>
+                                    ))}
+                                </select>
+                                
+                                {/* NEW Randomizer Button */}
+                                <button
+                                    type="button"
+                                    onClick={handleRandomTheme}
+                                    title="Randomize Theme"
+                                    className="p-2 rounded-lg transition shrink-0"
+                                    style={{backgroundColor: 'var(--accent-secondary)', color: 'var(--text-primary)'}}
+                                >
+                                    {/* Icon for Shuffle/Random */}
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0012 4.072v1.173a6.83 6.83 0 017.398 6.643M20 20v-5h-.581m-15.357-2A8.001 8.001 0 0012 19.928v-1.173a6.83 6.83 0 01-7.397-6.643M4 12h16"/></svg>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Dark/Light Mode Toggle */}
@@ -5236,7 +5243,7 @@ export default function AuthGate() {
 // hooks/useSpeechRecognition.ts
 import { useState, useEffect, useCallback, useRef } from 'react';
 
-// Define the API global object (must be window.SpeechRecognition or window.webkitSpeechRecognition)
+// Define the API global object
 declare global {
     interface Window {
         SpeechRecognition?: SpeechRecognitionAPI;
@@ -5254,7 +5261,7 @@ interface SpeechRecognitionInstance {
     lang: string;
     onstart: ((event: Event) => void) | null;
     onresult: ((event: Event) => void) | null;
-    onerror: ((event: Event) => void) | null;
+    onerror: ((event: SpeechRecognitionErrorEventResult) => void) | null; 
     onend: ((event: Event) => void) | null;
     start(): void;
     stop(): void;
@@ -5294,6 +5301,12 @@ interface SpeechRecognitionEventResult extends Event {
     results: SpeechRecognitionResultList;
 }
 
+// Correct interface for the error event
+interface SpeechRecognitionErrorEventResult extends Event {
+    error: string;
+    message: string;
+}
+
 const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
     const {
         continuous = true,
@@ -5309,8 +5322,10 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
     const recognitionSupported = SpeechRecognition !== null;
     const [isListening, setIsListening] = useState(false);
     const [transcript, setTranscript] = useState('');
+    
     const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
     const finalTranscriptRef = useRef('');
+    const isStoppingRef = useRef(false);
 
     const resetTranscript = useCallback(() => {
         setTranscript('');
@@ -5318,6 +5333,7 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
     }, []);
 
     useEffect(() => {
+        // ESLint Warning: isListening is used here and must be a dependency.
         if (!recognitionSupported || !SpeechRecognition) return;
 
         const recognition = new SpeechRecognition();
@@ -5325,10 +5341,14 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
         recognition.interimResults = interimResults;
         recognition.lang = lang;
 
+        recognitionRef.current = recognition;
+
         recognition.onstart = () => {
             setIsListening(true);
+            isStoppingRef.current = false;
             finalTranscriptRef.current = '';
             onStart?.();
+            console.log('STT: Recognition started.');
         };
 
         recognition.onresult = (event: Event) => {
@@ -5347,46 +5367,68 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
 
             if (final) {
                 finalTranscriptRef.current += final;
-                onFinalTranscript?.(finalTranscriptRef.current.trim());
             }
             
-            // Update the main transcript state with both final and interim results
-            setTranscript((finalTranscriptRef.current + interim).trim());
+            const currentTotalTranscript = (finalTranscriptRef.current + interim).trim();
+            setTranscript(currentTotalTranscript);
             onInterimTranscript?.(interim.trim());
         };
-        recognition.onerror = (event: Event) => {
-            const errorEvent = event as ErrorEvent;
-            console.error('Speech recognition error:', event);
-            setIsListening(false);
-            onError?.(errorEvent.error);
-        };
 
-        recognition.onend = () => {
-            setIsListening(false);
-            // Ensure the final transcript is processed one last time if not already
-            if (finalTranscriptRef.current && finalTranscriptRef.current.trim() !== '' && !continuous) {
-                onFinalTranscript?.(finalTranscriptRef.current.trim());
+        recognition.onerror = (event: SpeechRecognitionErrorEventResult) => {
+            console.error('STT Error:', event.error);
+            
+            if (isStoppingRef.current) {
+                console.log('STT: Ignoring error due to manual stop.');
+                return;
             }
+            
+            setIsListening(false);
+            isStoppingRef.current = true;
+            onError?.(event.error); 
             onEnd?.();
         };
 
-        recognitionRef.current = recognition;
+        recognition.onend = () => {
+            console.log('STT: Recognition ended (browser event).');
 
-        // Cleanup
+            if (!isStoppingRef.current && finalTranscriptRef.current) {
+                 onFinalTranscript?.(finalTranscriptRef.current.trim());
+            }
+
+            setIsListening(false);
+            isStoppingRef.current = false;
+            onEnd?.();
+        };
+
+        // Cleanup function for useEffect
         return () => {
-            recognition.onstart = null;
-            recognition.onresult = null;
-            recognition.onerror = null;
-            recognition.onend = null;
-            if (isListening) {
-                recognition.stop();
+            if (recognitionRef.current && isListening) {
+                console.log('STT: Component unmounting/re-rendering, forcing stop.');
+                try {
+                    recognitionRef.current.stop();
+                } catch (e) {
+                    // Ignore benign errors during cleanup
+                }
+            }
+            if (recognitionRef.current) {
+                recognitionRef.current.onstart = null;
+                recognitionRef.current.onresult = null;
+                recognitionRef.current.onerror = null;
+                recognitionRef.current.onend = null;
             }
         };
-    }, [recognitionSupported, continuous, interimResults, lang, onStart, onEnd, onError, onFinalTranscript, onInterimTranscript]);
+    }, [isListening, recognitionSupported, continuous, interimResults, lang, onStart, onError, onEnd, onFinalTranscript, onInterimTranscript, options.continuous]);
+
 
     const startListening = useCallback((initialText: string = '') => {
         if (recognitionRef.current && !isListening) {
-            // If the user has pre-filled text, treat it as the base
+            
+            // Force a stop if stuck in a transitional state
+            try {
+                 recognitionRef.current.stop();
+            } catch {}
+
+            // Set initial text state before starting
             if (initialText.trim()) {
                  finalTranscriptRef.current = initialText.trim() + ' ';
                  setTranscript(initialText.trim());
@@ -5394,25 +5436,34 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
                  resetTranscript();
             }
             
+            isStoppingRef.current = false;
+
             try {
                 recognitionRef.current.start();
-            } catch (e: unknown) {
-                // Ignore InvalidStateError if recognition is already running (rare but happens)
-                const error = e as Error;
-                if (error.name !== 'InvalidStateError') {
-                    console.error("Error starting recognition:", e);
-                    recognitionRef.current.stop();
-                    onError?.(error.message);
+            } catch (error: unknown) { 
+                const e = error as Error;
+                if (e.name !== 'InvalidStateError') {
+                    console.error("STT: Fatal Error starting recognition:", e.message);
+                    onError?.(e.message);
                 }
             }
         }
-    }, [isListening, resetTranscript, onError]);
+    }, [isListening, resetTranscript, onError]); 
 
     const stopListening = useCallback(() => {
         if (recognitionRef.current && isListening) {
+            
+            isStoppingRef.current = true; 
             recognitionRef.current.stop();
+            
+            if (finalTranscriptRef.current) {
+                onFinalTranscript?.(finalTranscriptRef.current.trim());
+            }
+            
+            setIsListening(false);
+            onEnd?.();
         }
-    }, [isListening]);
+    }, [isListening, onFinalTranscript, onEnd]);
 
     return {
         isListening,
@@ -6006,6 +6057,6 @@ export { app };
 
 --- END FILE: utils\firebase.ts ---
 
--------------------------------------------------------
+----------------------------------------------------------------------------------------------
 
-how to add a theme randomizer button right beside theme section in sidebar?
+When I start voice typing the microphone is getting accessed but all of a sudden it is losing its access so can you tell me why is it happening and what's the fix for it and please find out why the voice typing is not working as it should and see what are the other ways of using voice typing that I don't know if there are any more ways or new ways or better ways for using the voice typing what are they let me know that as well OK that's it thank you.

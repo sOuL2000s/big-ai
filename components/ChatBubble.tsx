@@ -7,18 +7,7 @@ import { ChatMessage, FileAttachment } from '@/types/chat';
 // External Libraries for Markdown Rendering
 import { marked } from 'marked';
 import DOMPurify from 'dompurify';
-import Prism from 'prismjs';
-// Removed: import 'prismjs/themes/prism-dark.css'; // Now imported in globals.css for global application
-
-// Import specific Prism languages needed
-import 'prismjs/components/prism-javascript';
-import 'prismjs/components/prism-typescript';
-import 'prismjs/components/prism-json';
-import 'prismjs/components/prism-python';
-import 'prismjs/components/prism-bash';
-import 'prismjs/components/prism-css';
-import 'prismjs/components/prism-markup';
-
+// NOTE: PrismJS imports removed.
 
 // --- TTS / DICTATION UTILITY (Client-side implementation) ---
 // Global state for TTS to ensure only one message is speaking at a time
@@ -86,20 +75,32 @@ const toggleSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButton
     }
 };
 
+// Helper function to explicitly HTML escape code content for literal display
+const escapeHtml = (unsafe: string): string => {
+    return unsafe.replace(/&/g, "&amp;")
+                 .replace(/</g, "&lt;")
+                 .replace(/>/g, "&gt;")
+                 .replace(/"/g, "&quot;")
+                 .replace(/'/g, "&#039;");
+}
+
+
 // --- MARKED CUSTOM RENDERER ---
 const renderer = new marked.Renderer();
 
-// Custom code block renderer
+// Custom code block renderer (Now without Prism.js logic, but with correct HTML escaping)
 renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped?: boolean }): string => {
     const language = lang || 'plaintext';
-    // Marked escapes HTML entities; we need to unescape for Prism to work correctly.
-    const unescapedCode = text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>').replace(/"/g, '"').replace(/'/g, "'");
+    
+    // We use the raw text for copying (encoded) and the escaped text for display
+    const rawCodeForCopy = text; 
+    const escapedCodeForDisplay = escapeHtml(text);
     
     const header = `
         <div class="code-block-header flex justify-between items-center">
             <span class="text-xs font-semibold uppercase" style="color: var(--text-secondary);">${language}</span>
             <button type="button" class="copy-button p-1 rounded transition flex items-center gap-1 text-xs" 
-                data-code="${encodeURIComponent(unescapedCode)}" 
+                data-code="${encodeURIComponent(rawCodeForCopy)}" 
                 style="color: var(--text-secondary); padding: 0.25rem 0.5rem;">
                 <span data-icon="clipboard" style="color: var(--text-secondary);">${COPY_ICON}</span>
                 <span data-text="Copy">Copy</span>
@@ -107,12 +108,11 @@ renderer.code = ({ text, lang, escaped }: { text: string; lang?: string; escaped
         </div>
     `;
     
-    // We wrap the standard <pre> tag in the .code-block-container defined in CSS
-    // The inner <pre><code> is where Prism.js applies its magic
+    // Inserting escaped content directly into <code>
     return `
         <div class="code-block-container" data-lang="${language}">
             ${header}
-            <pre><code class="language-${language}">${unescapedCode}</code></pre>
+            <pre><code>${escapedCodeForDisplay}</code></pre>
         </div>
     `;
 };
@@ -141,7 +141,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
     const sanitizedHtml = useMemo(() => {
         if (isUser) {
             // Only convert simple line breaks to <p> tags for cleaner display of user input
-            // NOTE: Must sanitize before applying manual line breaks if using DOMPurify
             const safeText = DOMPurify.sanitize(message.text);
             return `<p>${safeText.replace(/\n/g, '<br/>')}</p>`;
         }
@@ -151,20 +150,11 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
         return DOMPurify.sanitize(html as string);
     }, [message.text, isUser]);
 
-    // Apply syntax highlighting and copy listeners after rendering
+    // Apply copy listeners after rendering (NO SYNTAX HIGHLIGHTING)
     useEffect(() => {
         if (contentRef.current && !isUser) {
-            // 1. Syntax highlighting
-            contentRef.current.querySelectorAll('pre code').forEach((block) => {
-                try {
-                    // This is client-side code, Prism should be globally available via imported modules
-                    Prism.highlightElement(block);
-                } catch (e) {
-                    console.error("Prism highlighting failed:", e);
-                }
-            });
             
-            // 2. Setup Copy Listeners for code blocks
+            // 1. Setup Copy Listeners for code blocks
             contentRef.current.querySelectorAll('.copy-button').forEach(button => {
                 const encodedCode = button.getAttribute('data-code');
                 if (!encodedCode) return;
@@ -305,10 +295,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                         style={{
                             backgroundColor: 'var(--header-bg)', 
                             border: '1px solid var(--border-color)',
-                            // Use ternary operator to position the action buttons correctly
                             right: isUser ? '10px' : 'auto',
                             left: isUser ? 'auto' : '10px',
-                            bottom: '-15px', // Adjusted to hang 15px below the bubble's bottom edge
+                            bottom: '-15px', 
                         }}
                     >
                         
@@ -317,10 +306,9 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                             ref={copyButtonRef}
                             onClick={handleCopyText} 
                             title="Copy Message"
-                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" // Added flex classes
+                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" 
                             style={{color: 'var(--text-secondary)'}}
                         >
-                            {/* FIX: Explicitly set stroke and color for SVG consistency */}
                             <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
                         </button>
 
@@ -330,12 +318,10 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                                 ref={dictateButtonRef}
                                 onClick={() => toggleSpeech(message.text, dictateButtonRef)}
                                 title="Dictate Message (TTS)"
-                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" // Added flex classes
+                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" 
                                 style={{color: 'var(--text-secondary)'}}
                             >
                                 <span data-icon="tts" className='flex items-center justify-center'>
-                                    {/* Default Dictate Icon */}
-                                    {/* FIX: Explicitly set stroke and color for SVG consistency */}
                                     <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
                                 </span>
                             </button>
@@ -347,7 +333,6 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                 <div 
                     className={`p-2 rounded-full ml-3 shrink-0 self-start ${isUser ? '' : 'hidden'}`} 
                     style={{
-                        // FIX: Use theme variables for dynamic contrast
                         backgroundColor: 'var(--text-primary)', 
                         color: 'var(--bg-primary)'
                     }}

@@ -8,6 +8,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import { v4 as uuidvv4 } from 'uuid';
 import { useTheme } from '@/components/providers/ThemeContext';
 import useSpeechRecognition from '@/hooks/useSpeechRecognition';
+import MarkdownExportModal from './ui/MarkdownExportModal'; // <--- NEW IMPORT
 
 const BOT_PENDING_ID = 'bot-pending';
 
@@ -66,6 +67,9 @@ export default function ChatArea({
   
   const [isInitialExchange, setIsInitialExchange] = useState(false); 
   
+  // NEW: Export modal state
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false); 
+
   const initialSpeechInputRef = useRef('');
 
 
@@ -448,6 +452,12 @@ export default function ChatArea({
   }, [mergedInput]);
 
 
+  // Determine the current conversation title for the header and export modal
+  const currentTitle = chatId 
+      ? messages[0]?.text.substring(0, 50) + (messages[0]?.text.length > 50 ? '...' : '') 
+      : 'New Conversation';
+
+
   // --- Render ---
 
   if (isHistoryLoading) {
@@ -474,20 +484,37 @@ export default function ChatArea({
              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 12h16M4 18h7"></path></svg>
         </button>
 
-        <h1 className="font-semibold truncate max-w-[calc(100%-80px)]">
-            {chatId ? messages[0]?.text.substring(0, 50) + '...' : 'New Conversation'}
+        <h1 className="font-semibold truncate max-w-[calc(100%-180px)]"> 
+            {currentTitle}
         </h1>
         
-        {/* Conversation Mode Button in Header */}
-        <button
-            onClick={onOpenConversationMode}
-            className="p-2 rounded-lg transition"
-            title="Start Conversation Mode (Voice Chat)"
-            disabled={isLoading || isHistoryLoading}
-            style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
-        >
-             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-        </button>
+        {/* RIGHT SIDE BUTTONS CONTAINER */}
+        <div className='flex gap-2 items-center'>
+            
+            {/* NEW: Export Chat Button */}
+            {chatId && messages.length > 0 && (
+                <button
+                    onClick={() => setIsExportModalOpen(true)}
+                    className="p-2 rounded-lg transition"
+                    title="Export Chat to Markdown"
+                    disabled={isLoading || isHistoryLoading}
+                    style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
+                >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                </button>
+            )}
+
+            {/* Conversation Mode Button in Header */}
+            <button
+                onClick={onOpenConversationMode}
+                className="p-2 rounded-lg transition"
+                title="Start Conversation Mode (Voice Chat)"
+                disabled={isLoading || isHistoryLoading}
+                style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--border-color)'}}
+            >
+                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+            </button>
+        </div>
       </header>
       
       {/* Chat Messages Display */}
@@ -591,6 +618,15 @@ export default function ChatArea({
             </button>
         </form>
       </div>
+
+      {/* NEW: Markdown Export Modal */}
+      {isExportModalOpen && chatId && (
+          <MarkdownExportModal 
+              conversationTitle={currentTitle} 
+              messages={messages.filter(m => m.id !== BOT_PENDING_ID)} // Exclude pending message
+              onClose={() => setIsExportModalOpen(false)}
+          />
+      )}
     </div>
   );
 }

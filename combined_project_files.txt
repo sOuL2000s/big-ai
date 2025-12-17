@@ -5325,15 +5325,29 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
     
     const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
     const finalTranscriptRef = useRef('');
-    const isStoppingRef = useRef(false);
+    // NEW: Track if the stop was initiated by the user/code
+    const isManualStopRef = useRef(false); 
 
     const resetTranscript = useCallback(() => {
         setTranscript('');
         finalTranscriptRef.current = '';
     }, []);
 
+    const startSession = useCallback(() => {
+         if (recognitionRef.current) {
+             try {
+                 recognitionRef.current.start();
+             } catch (error: unknown) { 
+                 const e = error as Error;
+                 if (e.name !== 'InvalidStateError') {
+                     console.error("STT: Fatal Error starting recognition:", e.message);
+                     onError?.(e.message);
+                 }
+             }
+         }
+    }, [onError]);
+
     useEffect(() => {
-        // ESLint Warning: isListening is used here and must be a dependency.
         if (!recognitionSupported || !SpeechRecognition) return;
 
         const recognition = new SpeechRecognition();
@@ -5345,8 +5359,8 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
 
         recognition.onstart = () => {
             setIsListening(true);
-            isStoppingRef.current = false;
-            finalTranscriptRef.current = '';
+            isManualStopRef.current = false;
+            // finalTranscriptRef.current is managed in startListening, don't reset here
             onStart?.();
             console.log('STT: Recognition started.');
         };
@@ -5377,13 +5391,16 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
         recognition.onerror = (event: SpeechRecognitionErrorEventResult) => {
             console.error('STT Error:', event.error);
             
-            if (isStoppingRef.current) {
-                console.log('STT: Ignoring error due to manual stop.');
+            // Critical: If the error is 'network' or 'aborted' it often means the browser timed out 
+            // and we should still try to restart if running in continuous mode and not manually stopped.
+            if (event.error === 'network' || event.error === 'aborted') {
+                // Ignore the error if we are supposed to be continuous, let onend handle the restart
                 return;
             }
             
+            // Other fatal errors (e.g., 'not-allowed')
             setIsListening(false);
-            isStoppingRef.current = true;
+            isManualStopRef.current = true; // Prevents accidental restart
             onError?.(event.error); 
             onEnd?.();
         };
@@ -5391,20 +5408,39 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
         recognition.onend = () => {
             console.log('STT: Recognition ended (browser event).');
 
-            if (!isStoppingRef.current && finalTranscriptRef.current) {
-                 onFinalTranscript?.(finalTranscriptRef.current.trim());
+            if (!isManualStopRef.current) {
+                // If it was an unintentional stop (timeout, silence, browser limit)
+                
+                // 1. Process the final piece of speech, if any
+                if (finalTranscriptRef.current) {
+                    onFinalTranscript?.(finalTranscriptRef.current.trim());
+                }
+
+                if (continuous) {
+                    // 2. IMMEDIATE RESTART LOOP for continuous mode
+                    console.log('STT: Restarting continuous session.');
+                    startSession();
+                    return; // Skip the state reset below
+                }
+            } else {
+                // If it was a manual stop, finalize the transcript
+                if (finalTranscriptRef.current) {
+                    onFinalTranscript?.(finalTranscriptRef.current.trim());
+                }
             }
 
+            // Standard cleanup if session is truly stopped
             setIsListening(false);
-            isStoppingRef.current = false;
+            isManualStopRef.current = false;
             onEnd?.();
         };
 
         // Cleanup function for useEffect
         return () => {
-            if (recognitionRef.current && isListening) {
+            if (recognitionRef.current) {
                 console.log('STT: Component unmounting/re-rendering, forcing stop.');
                 try {
+                    isManualStopRef.current = true; // Mark as manual stop during cleanup
                     recognitionRef.current.stop();
                 } catch (e) {
                     // Ignore benign errors during cleanup
@@ -5417,7 +5453,7 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
                 recognitionRef.current.onend = null;
             }
         };
-    }, [isListening, recognitionSupported, continuous, interimResults, lang, onStart, onError, onEnd, onFinalTranscript, onInterimTranscript, options.continuous]);
+    }, [recognitionSupported, continuous, interimResults, lang, onStart, onError, onEnd, onFinalTranscript, onInterimTranscript, startSession]);
 
 
     const startListening = useCallback((initialText: string = '') => {
@@ -5436,34 +5472,22 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
                  resetTranscript();
             }
             
-            isStoppingRef.current = false;
+            isManualStopRef.current = false; // Starting means it's not a manual stop
 
-            try {
-                recognitionRef.current.start();
-            } catch (error: unknown) { 
-                const e = error as Error;
-                if (e.name !== 'InvalidStateError') {
-                    console.error("STT: Fatal Error starting recognition:", e.message);
-                    onError?.(e.message);
-                }
-            }
+            startSession();
         }
-    }, [isListening, resetTranscript, onError]); 
+    }, [isListening, resetTranscript, startSession]); 
 
     const stopListening = useCallback(() => {
         if (recognitionRef.current && isListening) {
             
-            isStoppingRef.current = true; 
+            isManualStopRef.current = true; // Mark stop as intentional
             recognitionRef.current.stop();
             
-            if (finalTranscriptRef.current) {
-                onFinalTranscript?.(finalTranscriptRef.current.trim());
-            }
-            
-            setIsListening(false);
-            onEnd?.();
+            // Note: onend will be triggered immediately, which calls onFinalTranscript.
+            // We set isListening=false inside onend.
         }
-    }, [isListening, onFinalTranscript, onEnd]);
+    }, [isListening]);
 
     return {
         isListening,
@@ -6057,6 +6081,7 @@ export { app };
 
 --- END FILE: utils\firebase.ts ---
 
-----------------------------------------------------------------------------------------------
+----------------------------------------------------------
 
-When I start voice typing the microphone is getting accessed but all of a sudden it is losing its access so can you tell me why is it happening and what's the fix for it and please find out why the voice typing is not working as it should and see what are the other ways of using voice typing that I don't know if there are any more ways or new ways or better ways for using the voice typing what are they let me know that as well OK that's it thank you.
+add a feature to export the chat in markdown and preview in a small popup markdown editor and also a button to copy the markdown within that markdown editor popup.
+send me the necessary lines to change.

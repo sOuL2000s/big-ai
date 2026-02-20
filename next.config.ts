@@ -5,13 +5,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ["@google/generative-ai"],
   // Optional: If using Turbopack specifically, you might need to ensure 
   // it doesn't try to optimize this package for the browser
-  experimental: {
-    turbo: {
-      resolveAlias: {
-        "@google/generative-ai": "@google/generative-ai",
-      },
-    },
-  },
+  experimental: {},
 };
 
 export default nextConfig;

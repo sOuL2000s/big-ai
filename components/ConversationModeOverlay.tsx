@@ -1,7 +1,7 @@
 // components/ConversationModeOverlay.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/components/providers/AuthProvider';
 import { useTheme } from '@/components/providers/ThemeContext';
 import { ChatMessage } from '@/types/chat';

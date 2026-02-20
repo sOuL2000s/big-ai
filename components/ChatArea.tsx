@@ -51,7 +51,6 @@ export default function ChatArea({
     onNewMessageSent, 
     onOpenConversationMode, 
     onToggleSidebar, 
-    isMobileView 
 }: ChatAreaProps) {
   const { user, getIdToken } = useAuth();
   const { settings } = useTheme();
@@ -382,7 +381,7 @@ export default function ChatArea({
             if (errorData.details) {
                  errorMsg += `\n\n--- Debug Details ---\n${errorData.details}`;
             }
-        } catch (_jsonError) {
+        } catch {
              errorMsg = `Server responded with status ${response.status}. Could not read error details.`;
         }
         finalizeBotMessage(`Error: ${errorMsg}`);

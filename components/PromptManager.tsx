@@ -1,26 +1,16 @@
 // components/PromptManager.tsx
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useAuth } from '@/components/providers/AuthProvider';
+import React, { useState } from 'react';
 import { useTheme } from '@/components/providers/ThemeContext';
-import { PromptTemplate, UserSettings } from '@/types/chat';
+import { PromptTemplate } from '@/types/chat';
 import { v4 as uuidv4 } from 'uuid';
 
 interface PromptManagerProps {
     onClose: () => void;
 }
 
-const MODELS = [
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro' },
-    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-    { id: 'gemini-2.5-flash-preview-09-2025', name: 'Gemini 2.5 Flash (Recommended)' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Stable)' },
-    { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
-];
-
 export default function PromptManager({ onClose }: PromptManagerProps) {
-    const { user } = useAuth();
     const { settings, updateSettings } = useTheme();
     
     // Local state for forms
@@ -54,10 +44,6 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
         await updateSettings({ globalSystemPrompt: '' });
         setStatusMessage('Global prompt cleared.');
         setTimeout(() => setStatusMessage(null), 3000);
-    };
-    
-    const handleModelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-        updateSettings({ globalModel: e.target.value });
     };
 
     // --- Template Handlers ---
@@ -135,14 +121,14 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
     const globalPromptIsActive = globalPrompt.trim() !== '';
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-            {/* FIX: Use max-w-full and w-full to prevent horizontal overflow on small screens */}
-            <div className="p-8 rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border" style={{backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border-color)'}}>
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4 backdrop-blur-md">
+            {/* Modal Container: Enhanced visibility and overflow protection */}
+            <div className="p-8 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] w-full max-w-4xl max-h-[92vh] overflow-y-auto border animate-in fade-in zoom-in duration-300" style={{backgroundColor: 'var(--card-bg)', color: 'var(--text-primary)', borderColor: 'var(--border-color)'}}>
                 
                 <div className="flex justify-between items-center mb-6 border-b pb-3" style={{borderColor: 'var(--border-color)'}}>
                     <h2 className="text-2xl font-bold flex items-center gap-2">
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
-                        Prompt & API Configuration
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                        Prompt Management
                     </h2>
                     <button onClick={onClose} className="p-1 rounded hover:opacity-80 transition" style={{color: 'var(--text-secondary)'}}>
                         <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -165,30 +151,6 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
                     </div>
                 )}
 
-                {/* --- API Key Management --- */}
-                <div className="mb-6 p-4 rounded-lg border" style={{backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)'}}>
-                    <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-secondary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 7a2 2 0 012 2v5a2 2 0 01-2 2h-2m-3-1a2 2 0 00-2 2v5m-3-4a2 2 0 002 2h4a2 2 0 002-2v-5a2 2 0 00-2-2m0 0a2 2 0 100-4 2 2 0 000 4z"></path></svg>
-                        Gemini API Key
-                    </h3>
-                    <div className="flex items-center gap-2">
-                        <input
-                            type="password"
-                            value={apiKeyInput}
-                            onChange={(e) => setApiKeyInput(e.target.value)}
-                            placeholder="Enter your private Gemini API Key (optional)"
-                            className="w-full p-2 rounded-md border text-sm"
-                            style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
-                        />
-                         <button onClick={handleSaveGlobalSettings} className="p-2 rounded-md transition" style={{backgroundColor: 'var(--accent-primary)', color: 'var(--ai-bubble-text)'}}>
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 7H5a2 2 0 00-2 2v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4"></path></svg>
-                        </button>
-                    </div>
-                    <p className="text-xs mt-1" style={{color: apiKeyInput.trim() ? 'var(--accent-success)' : 'var(--accent-error)'}}>
-                        {apiKeyInput.trim() ? 'Key is set. Your key will be prioritized for API calls.' : 'No key set. Using server fallback key.'}
-                    </p>
-                </div>
-
                 {/* --- Global System Prompt --- */}
                 <form onSubmit={handleSaveGlobalSettings} className="mb-6 p-4 rounded-lg border" style={{backgroundColor: 'var(--bg-secondary)', borderColor: 'var(--border-color)'}}>
                     <h3 className="text-lg font-bold mb-3 flex items-center gap-2">
@@ -203,6 +165,17 @@ export default function PromptManager({ onClose }: PromptManagerProps) {
                         className="w-full p-3 rounded-md border resize-none"
                         style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
                     />
+                    <div className="mt-4">
+                        <label className="block text-sm font-medium mb-1">Custom Gemini API Key (Optional)</label>
+                        <input
+                            type="password"
+                            value={apiKeyInput}
+                            onChange={(e) => setApiKeyInput(e.target.value)}
+                            placeholder="Enter your API Key to override default"
+                            className="w-full p-2 rounded-md border text-sm"
+                            style={{backgroundColor: 'var(--card-bg)', borderColor: 'var(--border-color)', color: 'var(--text-primary)'}}
+                        />
+                    </div>
                     <div className="flex justify-between items-center mt-4">
                         <button 
                             type="button"

@@ -15,9 +15,9 @@ let isSpeaking = false;
 let currentUtterance: SpeechSynthesisUtterance | null = null;
 let currentButtonRef: React.MutableRefObject<HTMLButtonElement | null> | null = null;
 
-const SPEAK_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>`;
-const PAUSE_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
-const COPY_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>`;
+const SPEAK_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19.114 5.636a9 9 0 010 12.728M16.463 8.288a5.25 5.25 0 010 7.424M6.75 8.25l4.72-4.72a.75.75 0 011.28.53v15.88a.75.75 0 01-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 012.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75z"></path></svg>`;
+const PAUSE_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 5.25v13.5m-7.5-13.5v13.5"></path></svg>`;
+const COPY_ICON = `<svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>`;
 const CHECK_ICON = `<svg class="w-4 h-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"></path></svg>`;
 
 const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonElement | null>) => {
@@ -56,6 +56,8 @@ const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonE
         isSpeaking = false;
         currentUtterance = null;
         currentButtonRef = null;
+        const iconSpan = buttonRef.current?.querySelector('[data-icon="tts"]');
+        if (iconSpan) iconSpan.innerHTML = SPEAK_ICON;
     };
 
     window.speechSynthesis.speak(utterance);
@@ -64,12 +66,15 @@ const startSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonE
 const toggleSpeech = (text: string, buttonRef: React.MutableRefObject<HTMLButtonElement | null>) => {
     if (!window.speechSynthesis) return;
 
+    // If currently speaking this message, stop it entirely
     if (isSpeaking && currentUtterance?.text === text) {
-        if (window.speechSynthesis.paused) {
-            window.speechSynthesis.resume();
-        } else {
-            window.speechSynthesis.pause();
-        }
+        window.speechSynthesis.cancel();
+        // Manually reset state because cancel() might not trigger onend reliably in all browsers/scenarios
+        isSpeaking = false;
+        currentUtterance = null;
+        currentButtonRef = null;
+        const iconSpan = buttonRef.current?.querySelector('[data-icon="tts"]');
+        if (iconSpan) iconSpan.innerHTML = SPEAK_ICON;
     } else {
         startSpeech(text, buttonRef);
     }
@@ -267,63 +272,63 @@ const ChatBubble: React.FC<ChatBubbleProps> = ({ message, isPending }) => {
                     {isUser ? '' : 'AI'}
                 </div>
                 
-                {/* Bubble Content */}
-                <div
-                    className={`p-3 rounded-xl shadow-md transition duration-300 ease-in-out break-words relative w-full ${
-                        isUser
-                            ? 'rounded-bl-none'
-                            : 'rounded-tr-none border'
-                    }`}
-                    style={{
-                        backgroundColor: isUser ? 'var(--user-bubble-bg)' : 'var(--ai-bubble-bg)',
-                        color: isUser ? 'var(--user-bubble-text)' : 'var(--ai-bubble-text)',
-                        borderColor: isUser ? 'transparent' : 'var(--border-color)'
-                    }}
-                >
-                    {/* Render Multimodal Attachments first */}
-                    {message.files && renderAttachments(message.files)}
-
-                    {/* Render Text Content */}
-                    <div 
-                        ref={contentRef}
-                        className={`message-content ${isUser ? '' : 'prose max-w-none'}`} 
-                        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
-                    />
-
-                    {/* Message Actions (Copy/Dictate) */}
-                    <div className="absolute z-10 flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded-lg" 
+                {/* Bubble Wrapper (Vertical column for Bubble + Actions) */}
+                <div className={`flex flex-col w-full ${isUser ? 'items-end' : 'items-start'}`}>
+                    {/* Bubble Content */}
+                    <div
+                        className={`p-3 rounded-xl shadow-md transition duration-300 ease-in-out wrap-break-word relative w-full ${
+                            isUser
+                                ? 'rounded-bl-none'
+                                : 'rounded-tr-none border'
+                        }`}
                         style={{
-                            backgroundColor: 'var(--header-bg)', 
-                            border: '1px solid var(--border-color)',
-                            right: isUser ? '10px' : 'auto',
-                            left: isUser ? 'auto' : '10px',
-                            bottom: '-15px', 
+                            backgroundColor: isUser ? 'var(--user-bubble-bg)' : 'var(--ai-bubble-bg)',
+                            color: isUser ? 'var(--user-bubble-text)' : 'var(--ai-bubble-text)',
+                            borderColor: isUser ? 'transparent' : 'var(--border-color)'
                         }}
                     >
-                        
+                        {/* Render Multimodal Attachments first */}
+                        {message.files && renderAttachments(message.files)}
+
+                        {/* Render Text Content */}
+                        <div 
+                            ref={contentRef}
+                            className={`message-content ${isUser ? '' : 'prose max-w-none'}`} 
+                            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+                        />
+                    </div>
+
+                    {/* Message Actions (Copy/Dictate) - Positioned below the bubble */}
+                    <div className={`flex mt-2 space-x-2 ${isUser ? 'justify-end pr-1' : 'justify-start pl-1'}`}>
                         {/* Copy Button */}
                         <button 
                             ref={copyButtonRef}
                             onClick={handleCopyText} 
                             title="Copy Message"
-                            className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" 
-                            style={{color: 'var(--text-secondary)'}}
+                            className="p-1.5 rounded-lg transition border flex items-center justify-center shadow-sm" 
+                            style={{
+                                color: 'var(--text-secondary)', 
+                                backgroundColor: 'var(--bg-secondary)',
+                                borderColor: 'var(--border-color)'
+                            }}
                         >
-                            <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5v-2a2 2 0 012-2h2a2 2 0 012 2v2m-3 7h3m-3 4h3"></path></svg>
+                            <span className="flex items-center justify-center" dangerouslySetInnerHTML={{ __html: COPY_ICON }} />
                         </button>
 
                         {/* Dictate Button (Only when not pending) */}
                         {!isPending && (
-                             <button
+                            <button
                                 ref={dictateButtonRef}
                                 onClick={() => toggleSpeech(message.text, dictateButtonRef)}
                                 title="Dictate Message (TTS)"
-                                className="p-1 rounded transition hover:bg-[var(--sidebar-item-hover)] flex items-center justify-center" 
-                                style={{color: 'var(--text-secondary)'}}
+                                className="p-1.5 rounded-lg transition border flex items-center justify-center shadow-sm" 
+                                style={{
+                                    color: 'var(--text-secondary)', 
+                                    backgroundColor: 'var(--bg-secondary)',
+                                    borderColor: 'var(--border-color)'
+                                }}
                             >
-                                <span data-icon="tts" className='flex items-center justify-center'>
-                                    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'inherit', stroke: 'currentColor'}}><path strokeLinecap="round" strokeLinejoin="round" d="M15.536 8.464l-2.071 2.071-2.071-2.071m4.142 4.142l-2.071 2.071m0 0l-2.071-2.071M12 21a9 9 0 110-18 9 9 0 010 18z"></path></svg>
-                                </span>
+                                <span data-icon="tts" className='flex items-center justify-center' dangerouslySetInnerHTML={{ __html: SPEAK_ICON }} />
                             </button>
                         )}
                     </div>

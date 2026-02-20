@@ -216,12 +216,6 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
 
     const startListening = useCallback((initialText: string = '') => {
         if (recognitionRef.current && !isListening) {
-            
-            // Force a stop if stuck in a transitional state
-            try {
-                 recognitionRef.current.stop();
-            } catch {}
-
             // Set initial text state before starting
             if (initialText.trim()) {
                  finalTranscriptRef.current = initialText.trim() + ' ';
@@ -231,21 +225,21 @@ const useSpeechRecognition = (options: SpeechRecognitionOptions = {}) => {
             }
             
             isManualStopRef.current = false; // Starting means it's not a manual stop
-
             startSession();
         }
     }, [isListening, resetTranscript, startSession]); 
 
     const stopListening = useCallback(() => {
-        if (recognitionRef.current && isListening) {
-            
+        if (recognitionRef.current) {
             isManualStopRef.current = true; // Mark stop as intentional
-            recognitionRef.current.stop();
-            
-            // Note: onend will be triggered immediately, which calls onFinalTranscript.
-            // We set isListening=false inside onend.
+            try {
+                recognitionRef.current.stop();
+            } catch (e) {
+                // Ensure state reflects stop even if low-level call fails
+                setIsListening(false);
+            }
         }
-    }, [isListening]);
+    }, []);
 
     return {
         isListening,

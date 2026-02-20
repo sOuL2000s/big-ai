@@ -26,6 +26,9 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
     const { user, getIdToken } = useAuth();
     const { settings } = useTheme(); // Note: We rely on global model/system prompt from settings
     
+    // Track if the AI speech was intentionally cancelled to prevent auto-restart of listening
+    const isAiSpeechManuallyStopped = useRef(false);
+
     // State for managing voice output
     const [isAiSpeaking, setIsAiSpeaking] = useState(false);
     const [status, setStatus] = useState<'idle' | 'listening' | 'thinking' | 'speaking' | 'error'>('idle');
@@ -225,6 +228,7 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
         setStatus('speaking');
         setStatusMessage('AI Speaking...');
         setIsAiSpeaking(true);
+        isAiSpeechManuallyStopped.current = false;
 
         const utterance = new SpeechSynthesisUtterance(text);
         
@@ -235,7 +239,10 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
         
         utterance.onend = () => {
             setIsAiSpeaking(false);
-            // After AI speaks, restart listening
+            
+            // Only restart listening if speech finished naturally
+            if (isAiSpeechManuallyStopped.current) return;
+
             if (recognitionSupported) {
                  // Slight delay before restarting mic to prevent capturing residual sound
                  setTimeout(() => startListening(), 500); 
@@ -261,6 +268,7 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
         if (!user) return;
         
         if (isAiSpeaking) {
+            isAiSpeechManuallyStopped.current = true;
             window.speechSynthesis.cancel();
             setIsAiSpeaking(false);
             setStatus('idle');
@@ -290,12 +298,19 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
         ? 'Custom Prompt' 
         : CONVERSATION_PERSONALITIES.find(p => p.name === selectedPersonality)?.name || 'Standard';
 
+    const handleCloseOverlay = () => {
+        isAiSpeechManuallyStopped.current = true;
+        if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
+        if (isListening) stopListening();
+        onClose();
+    };
+
     return (
         <div 
             className="fixed inset-0 flex flex-col items-center justify-center p-4 transition-opacity duration-500"
             style={{backgroundColor: 'var(--conversation-bg)', color: 'var(--conversation-text)', zIndex: 100}}
         >
-            <button id="conversation-mode-close-btn" onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/10 transition" style={{color: 'var(--text-secondary)'}}>
+            <button id="conversation-mode-close-btn" onClick={handleCloseOverlay} className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/10 transition" style={{color: 'var(--text-secondary)'}}>
                 <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
             </button>
 
@@ -336,7 +351,7 @@ export default function ConversationModeOverlay({ chatId, onChatIdChange, onClos
                 </div>
             </div>
 
-            <div className={`text-3xl font-extrabold text-center mb-6 min-h-[3rem] transition-colors duration-300`} 
+            <div className={`text-3xl font-extrabold text-center mb-6 min-h-12 transition-colors duration-300`} 
                  style={{color: status === 'error' ? 'var(--accent-error)' : 'var(--text-primary)'}}
             >
                 {statusMessage}

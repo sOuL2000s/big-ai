@@ -10,10 +10,11 @@ interface SettingsPanelProps {
 }
 
 const MODELS = [
-    { name: 'Gemini 2.5 Flash (Preview 09-2025)', id: 'gemini-2.5-flash-preview-09-2025', description: 'The recommended default model, stable and powerful.' }, // <-- NEW DEFAULT
-    { name: 'Gemini 2.5 Flash (Stable)', id: 'gemini-2.5-flash', description: 'Fast and versatile, ideal for chat.' },
-    { name: 'Gemini 2.5 Pro', id: 'gemini-2.5-pro', description: 'Most capable model for complex tasks.' },
-    { name: 'Gemini 3.0 Pro', id: 'gemini-3-pro-preview', description: 'Experimental, highest reasoning capability.' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Fast and versatile.' },
+    { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Most capable for complex tasks.' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash', description: 'New generation flash.' },
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro Preview', description: 'Latest experimental reasoning.' },
+    { id: 'deep-research-pro-preview-12-2025', name: 'Deep Research Pro', description: 'Advanced research capabilities.' },
 ];
 
 export default function SettingsPanel({ onClose }: SettingsPanelProps) {

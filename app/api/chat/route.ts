@@ -158,7 +158,8 @@ export async function POST(req: NextRequest) {
     // 2. Generate the streaming response
     const stream = await generateStreamingResponse(
         fullHistoryContext,
-        systemInstruction
+        systemInstruction,
+        conversation?.model
     );
     
     // 3. Read the entire stream response to save it to the database

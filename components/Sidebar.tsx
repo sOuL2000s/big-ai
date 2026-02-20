@@ -17,27 +17,64 @@ interface SidebarProps {
     currentChatId: string | undefined;
     onNewMessageSent: () => void; 
     onOpenConversationMode: () => void; 
-    isSidebarOpen: boolean; // Universal state for open/closed
-    onCloseSidebar: () => void; // Universal close handler
+    isSidebarOpen: boolean;
+    onCloseSidebar: () => void;
     isMobileView: boolean;
+    setIsPromptManagerOpen: (open: boolean) => void;
 }
 
-// Available Models list (Kept the same)
 const AVAILABLE_MODELS = [
-    { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro' },
+    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash' },
     { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro' },
-    { id: 'gemini-2.5-flash-preview-09-2025', name: 'Gemini 2.5 Flash (Recommended)' },
-    { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash (Stable)' },
+    { id: 'gemini-2.0-flash', name: 'Gemini 2.0 Flash' },
+    { id: 'gemini-2.0-flash-001', name: 'Gemini 2.0 Flash 001' },
+    { id: 'gemini-2.0-flash-exp-image-generation', name: 'Gemini 2.0 Flash (Exp Image)' },
+    { id: 'gemini-2.0-flash-lite-001', name: 'Gemini 2.0 Flash Lite 001' },
+    { id: 'gemini-2.0-flash-lite', name: 'Gemini 2.0 Flash Lite' },
+    { id: 'gemini-flash-latest', name: 'Gemini Flash Latest' },
+    { id: 'gemini-flash-lite-latest', name: 'Gemini Flash Lite Latest' },
+    { id: 'gemini-pro-latest', name: 'Gemini Pro Latest' },
     { id: 'gemini-2.5-flash-lite', name: 'Gemini 2.5 Flash Lite' },
+    { id: 'gemini-2.5-flash-image', name: 'Gemini 2.5 Flash Image' },
+    { id: 'gemini-2.5-flash-lite-preview-09-2025', name: 'Gemini 2.5 Flash Lite (09-2025)' },
+    { id: 'gemini-3-pro-preview', name: 'Gemini 3.0 Pro Preview' },
+    { id: 'gemini-3-flash-preview', name: 'Gemini 3.0 Flash Preview' },
+    { id: 'gemini-3.1-pro-preview', name: 'Gemini 3.1 Pro Preview' },
+    { id: 'gemini-3.1-pro-preview-customtools', name: 'Gemini 3.1 Pro (Tools)' },
+    { id: 'gemini-3-pro-image-preview', name: 'Gemini 3.0 Pro Image' },
+    { id: 'gemini-robotics-er-1.5-preview', name: 'Gemini Robotics ER 1.5' },
+    { id: 'gemini-2.5-computer-use-preview-10-2025', name: 'Gemini 2.5 Computer Use' },
+    { id: 'gemini-embedding-001', name: 'Gemini Embedding 001' },
+    { id: 'imagen-4.0-generate-001', name: 'Imagen 4.0 Generate' },
+    { id: 'imagen-4.0-ultra-generate-001', name: 'Imagen 4.0 Ultra' },
+    { id: 'imagen-4.0-fast-generate-001', name: 'Imagen 4.0 Fast' },
+    { id: 'gemini-2.5-flash-preview-tts', name: 'Gemini 2.5 Flash TTS' },
+    { id: 'gemini-2.5-pro-preview-tts', name: 'Gemini 2.5 Pro TTS' },
+    { id: 'gemini-2.5-flash-native-audio-latest', name: 'Gemini 2.5 Audio Latest' },
+    { id: 'gemini-2.5-flash-native-audio-preview-09-2025', name: 'Gemini 2.5 Audio (09-2025)' },
+    { id: 'gemini-2.5-flash-native-audio-preview-12-2025', name: 'Gemini 2.5 Audio (12-2025)' },
+    { id: 'gemma-3-1b-it', name: 'Gemma 3 1B IT' },
+    { id: 'gemma-3-4b-it', name: 'Gemma 3 4B IT' },
+    { id: 'gemma-3-12b-it', name: 'Gemma 3 12B IT' },
+    { id: 'gemma-3-27b-it', name: 'Gemma 3 27B IT' },
+    { id: 'gemma-3n-e4b-it', name: 'Gemma 3N E4B IT' },
+    { id: 'gemma-3n-e2b-it', name: 'Gemma 3N E2B IT' },
+    { id: 'nano-banana-pro-preview', name: 'Nano Banana Pro' },
+    { id: 'deep-research-pro-preview-12-2025', name: 'Deep Research Pro' },
+    { id: 'aqa', name: 'AQA' },
+    { id: 'veo-2.0-generate-001', name: 'Veo 2.0 Generate' },
+    { id: 'veo-3.0-generate-001', name: 'Veo 3.0 Generate' },
+    { id: 'veo-3.0-fast-generate-001', name: 'Veo 3.0 Fast' },
+    { id: 'veo-3.1-generate-preview', name: 'Veo 3.1 Generate' },
+    { id: 'veo-3.1-fast-generate-preview', name: 'Veo 3.1 Fast' },
 ];
 
-export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent, onOpenConversationMode, isSidebarOpen, onCloseSidebar, isMobileView }: SidebarProps) {
+export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent, onOpenConversationMode, isSidebarOpen, onCloseSidebar, isMobileView, setIsPromptManagerOpen }: SidebarProps) {
     const { user, signOut, getIdToken } = useAuth();
     const { themeName, themeMode, setMode, setTheme, settings, updateSettings, availableThemes } = useTheme();
     
     const [history, setHistory] = useState<ChatHistoryItem[]>([]);
     const [loading, setLoading] = useState(true);
-    const [isPromptManagerOpen, setIsPromptManagerOpen] = useState(false); 
     const [isSettingsCollapsed, setIsSettingsCollapsed] = useState(true); 
 
     const fetchHistory = useCallback(async () => {
@@ -182,10 +219,6 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
             style={{backgroundColor: 'var(--sidebar-bg)', color: 'var(--text-primary)', borderRight: isSidebarOpen ? '1px solid var(--sidebar-border)' : 'none'}}
         >
             
-            {isPromptManagerOpen && (
-                <PromptManager onClose={() => { setIsPromptManagerOpen(false); onNewMessageSent(); }} />
-            )}
-            
             {/* Only render inner content if sidebar is open, controlling opacity for smooth transition */}
             <div className={`flex flex-col h-full w-full ${!isSidebarOpen && !isMobileView ? 'opacity-0' : 'opacity-100'} transition-opacity duration-100`}>
             
@@ -201,7 +234,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                     {isMobileView && (
                         <button 
                             onClick={onCloseSidebar} 
-                            className="p-1 rounded-full hover:bg-[var(--sidebar-item-hover)]"
+                            className="p-1 rounded-full hover:bg-(--sidebar-item-hover)"
                             style={{color: 'var(--text-primary)'}}
                         >
                             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12"></path></svg>
@@ -307,17 +340,17 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                     {/* Collapsible Settings Content */}
                     <div className={`space-y-3 overflow-hidden transition-all duration-300 ${isSettingsCollapsed ? 'max-h-0' : 'max-h-[800px]'}`}>
 
-                        {/* Quick Prompt/Template Access */}
+                        {/* Prompt Management Access */}
                         <button 
                             className="w-full text-left text-sm p-2 rounded-lg transition"
-                            onClick={() => { setIsPromptManagerOpen(true); if(isMobileView) onCloseSidebar(); }} // Close sidebar when opening manager
+                            onClick={() => { setIsPromptManagerOpen(true); if(isMobileView) onCloseSidebar(); }} 
                             style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-secondary)'}}
                         >
                             <span className="font-semibold flex items-center gap-2">
                                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
                                 </svg>
-                                Manage Prompts & API Key
+                                Prompt Management
                             </span>
                         </button>
 
@@ -373,7 +406,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                             <span style={{color: 'var(--text-secondary)'}}>Dark Mode ({themeMode})</span>
                             <label className="relative inline-block w-12 h-6 cursor-pointer">
                                 <input type="checkbox" checked={themeMode === 'dark'} onChange={handleModeToggle} className="sr-only peer" />
-                                <div className="w-full h-full rounded-full transition-colors duration-300 bg-[var(--text-secondary)] peer-checked:bg-[var(--accent-primary)]"></div>
+                                <div className="w-full h-full rounded-full transition-colors duration-300 bg-(--text-secondary) peer-checked:bg-(--accent-primary)"></div>
                                 <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${themeMode === 'dark' ? 'translate-x-6' : 'translate-x-0'}`}></div>
                             </label>
                         </div>
@@ -388,7 +421,7 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                                     onChange={handleStreamingToggle} 
                                     className="sr-only peer" 
                                 />
-                                <div className="w-full h-full rounded-full transition-colors duration-300 bg-[var(--text-secondary)] peer-checked:bg-[var(--accent-primary)]"></div>
+                                <div className="w-full h-full rounded-full transition-colors duration-300 bg-(--text-secondary) peer-checked:bg-(--accent-primary)"></div>
                                 <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${(settings?.streamingEnabled ?? true) ? 'translate-x-6' : 'translate-x-0'}`}></div>
                             </label>
                         </div>

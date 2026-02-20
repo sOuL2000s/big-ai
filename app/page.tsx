@@ -8,6 +8,7 @@ import { useAuth } from '@/components/providers/AuthProvider';
 import AuthGate from '@/components/ui/AuthGate';
 import ConversationModeOverlay from '@/components/ConversationModeOverlay';
 import { useTheme } from '@/components/providers/ThemeContext';
+import PromptManager from '@/components/PromptManager';
 
 // Helper function to determine initial mobile state
 const getInitialMobileState = () => {
@@ -32,6 +33,7 @@ export default function HomePage() {
   const [currentChatId, setCurrentChatId] = useState<string | undefined>(undefined);
   const [refreshSidebarToggle, setRefreshSidebarToggle] = useState(false);
   const [isConversationModeOpen, setIsConversationModeOpen] = useState(false);
+  const [isPromptManagerOpen, setIsPromptManagerOpen] = useState(false);
   
   // === RESPONSIVENESS STATE ===
   // FIX: Initialize state based on the initial check function
@@ -105,6 +107,7 @@ export default function HomePage() {
         isSidebarOpen={isSidebarOpen} 
         onCloseSidebar={() => setIsSidebarOpen(false)} 
         isMobileView={isMobile}
+        setIsPromptManagerOpen={setIsPromptManagerOpen}
       />
       
       {/* 2. Main Chat Area */}
@@ -136,6 +139,11 @@ export default function HomePage() {
           onClose={() => setIsConversationModeOpen(false)}
           onNewMessageSent={handleNewMessageSent}
         />
+      )}
+
+      {/* 5. Prompt Management Modal - Lifted to page level to prevent sidebar clipping */}
+      {isPromptManagerOpen && (
+        <PromptManager onClose={() => { setIsPromptManagerOpen(false); setRefreshSidebarToggle(p => !p); }} />
       )}
     </div>
   );

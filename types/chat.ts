@@ -41,9 +41,9 @@ export interface UserSettings {
     userId: string;
     globalModel: string;
     globalSystemPrompt: string;
+    apiKey?: string | null; // ADDED
     themeName: string; // NEW
     themeMode: 'light' | 'dark'; // NEW
-    apiKey?: string | null; // NEW: Stored Gemini API Key
     templates?: PromptTemplate[]; // NEW: Stored templates
     streamingEnabled: boolean; // <-- ADDED: Controls typewriter effect
 }

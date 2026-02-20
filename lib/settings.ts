@@ -1,6 +1,6 @@
 // lib/settings.ts
 import { db } from './firebaseAdmin';
-import { UserSettings, PromptTemplate } from '@/types/chat';
+import { UserSettings } from '@/types/chat';
 
 const SETTINGS_COLLECTION = 'user_settings';
 const DEFAULT_MODEL = 'gemini-2.5-flash-preview-09-2025';
@@ -11,7 +11,6 @@ const DEFAULT_SETTINGS: UserSettings = {
     globalSystemPrompt: 'You are Big AI, a helpful and large-scale language model developed by Google. Respond concisely and professionally.',
     themeName: 'default', // NEW
     themeMode: 'dark', // NEW
-    apiKey: null, // NEW
     templates: [], // NEW
     streamingEnabled: true, // <-- UPDATED DEFAULT
 }
@@ -33,7 +32,6 @@ export async function getSettings(userId: string): Promise<UserSettings> {
             themeMode: storedSettings.themeMode || 'dark',
             themeName: storedSettings.themeName || 'default',
             templates: storedSettings.templates || [],
-            apiKey: storedSettings.apiKey || null,
             streamingEnabled: storedSettings.streamingEnabled ?? true, // <-- Handle potential undefined/null
         };
     }
@@ -58,7 +56,6 @@ export async function saveSettings(userId: string, settings: Partial<UserSetting
     if (settings.globalSystemPrompt !== undefined) updatePayload.globalSystemPrompt = settings.globalSystemPrompt;
     if (settings.themeName !== undefined) updatePayload.themeName = settings.themeName;
     if (settings.themeMode !== undefined) updatePayload.themeMode = settings.themeMode;
-    if (settings.apiKey !== undefined) updatePayload.apiKey = settings.apiKey;
     if (settings.templates !== undefined) updatePayload.templates = settings.templates;
     if (settings.streamingEnabled !== undefined) updatePayload.streamingEnabled = settings.streamingEnabled; // <-- NEW
     

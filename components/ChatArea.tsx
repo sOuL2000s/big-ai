@@ -576,7 +576,9 @@ export default function ChatArea({
                     disabled={isLoading || isHistoryLoading}
                     style={{color: isListening ? 'white' : 'var(--text-secondary)', borderRadius: '0.75rem 0 0 0.75rem'}}
                 >
-                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7v0a7 7 0 01-7-7v0a7 7 0 0114 0zM12 18v3m4 0H8m6-12a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z" />
+                    </svg>
                 </button>
             )}
 

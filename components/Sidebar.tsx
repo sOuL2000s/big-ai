@@ -191,7 +191,9 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
             
                 <div className="flex items-center justify-between pb-4 border-b mb-4" style={{borderColor: 'var(--sidebar-border)'}}>
                     <h2 className="text-xl font-bold flex items-center gap-2" style={{color: 'var(--text-primary)'}}>
-                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" style={{color: 'var(--accent-primary)'}}><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M4.343 19.657l.707-.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>
+                        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" style={{color: 'var(--accent-primary)'}}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
                         Big AI
                     </h2>
                     
@@ -225,7 +227,9 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                     style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-primary)', border: '1px solid var(--sidebar-border)'}}
                     title="Start Voice Conversation"
                 >
-                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg>
+                    <svg className="w-5 h-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
                     Conversation Mode
                 </button>
 
@@ -310,7 +314,9 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                             style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--accent-secondary)'}}
                         >
                             <span className="font-semibold flex items-center gap-2">
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-2.414-2.414A1 1 0 0015.586 6H7a2 2 0 00-2 2v11a2 2 0 002 2zM17 17H7m10-4H7m4-4H7"></path></svg>
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                                </svg>
                                 Manage Prompts & API Key
                             </span>
                         </button>
@@ -351,11 +357,13 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                                     type="button"
                                     onClick={handleRandomTheme}
                                     title="Randomize Theme"
-                                    className="p-2 rounded-lg transition shrink-0"
+                                    className="p-2 rounded-lg transition shrink-0 flex items-center justify-center"
                                     style={{backgroundColor: 'var(--accent-secondary)', color: 'var(--text-primary)'}}
                                 >
-                                    {/* Icon for Shuffle/Random */}
-                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 0012 4.072v1.173a6.83 6.83 0 017.398 6.643M20 20v-5h-.581m-15.357-2A8.001 8.001 0 0012 19.928v-1.173a6.83 6.83 0 01-7.397-6.643M4 12h16"/></svg>
+                                    {/* Icon for Randomize (Sparkles) */}
+                                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" />
+                                    </svg>
                                 </button>
                             </div>
                         </div>
@@ -363,35 +371,25 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                         {/* Dark/Light Mode Toggle */}
                         <div className="flex items-center justify-between text-sm py-2">
                             <span style={{color: 'var(--text-secondary)'}}>Dark Mode ({themeMode})</span>
-                            <label className="relative inline-block w-12 h-6">
-                                <input type="checkbox" checked={themeMode === 'dark'} onChange={handleModeToggle} className="opacity-0 w-0 h-0" />
-                                <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
-                                    style={{
-                                        backgroundColor: themeMode === 'dark' ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                        '--tw-translate-x': themeMode === 'dark' ? '24px' : '0',
-                                        transition: 'background-color 0.4s, transform 0.4s'
-                                    } as React.CSSProperties}
-                                ></span>
+                            <label className="relative inline-block w-12 h-6 cursor-pointer">
+                                <input type="checkbox" checked={themeMode === 'dark'} onChange={handleModeToggle} className="sr-only peer" />
+                                <div className="w-full h-full rounded-full transition-colors duration-300 bg-[var(--text-secondary)] peer-checked:bg-[var(--accent-primary)]"></div>
+                                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${themeMode === 'dark' ? 'translate-x-6' : 'translate-x-0'}`}></div>
                             </label>
                         </div>
 
-                        {/* Streaming Toggle - Renamed Label */}
+                        {/* Streaming Toggle - AI Response */}
                         <div className="flex items-center justify-between text-sm py-2">
-                            <span style={{color: 'var(--text-secondary)'}}>AI Response: {settings?.streamingEnabled ? 'Typing (Stream)' : 'Instant (Full)'}</span>
-                            <label className="relative inline-block w-12 h-6">
+                            <span style={{color: 'var(--text-secondary)'}}>AI Response: {settings?.streamingEnabled ? 'Typing' : 'Instant'}</span>
+                            <label className="relative inline-block w-12 h-6 cursor-pointer">
                                 <input 
                                     type="checkbox" 
                                     checked={settings?.streamingEnabled ?? true} 
                                     onChange={handleStreamingToggle} 
-                                    className="opacity-0 w-0 h-0" 
+                                    className="sr-only peer" 
                                 />
-                                <span className="absolute cursor-pointer top-0 left-0 right-0 bottom-0 rounded-full before:absolute before:content-[''] before:h-4 before:w-4 before:left-1 before:bottom-1 before:rounded-full transition duration-400" 
-                                    style={{
-                                        backgroundColor: (settings?.streamingEnabled ?? true) ? 'var(--accent-primary)' : 'var(--text-secondary)',
-                                        '--tw-translate-x': (settings?.streamingEnabled ?? true) ? '24px' : '0',
-                                        transition: 'background-color 0.4s, transform 0.4s'
-                                    } as React.CSSProperties}
-                                ></span>
+                                <div className="w-full h-full rounded-full transition-colors duration-300 bg-[var(--text-secondary)] peer-checked:bg-[var(--accent-primary)]"></div>
+                                <div className={`absolute top-1 left-1 w-4 h-4 rounded-full bg-white transition-transform duration-300 ${(settings?.streamingEnabled ?? true) ? 'translate-x-6' : 'translate-x-0'}`}></div>
                             </label>
                         </div>
 
@@ -404,7 +402,9 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                                 style={{backgroundColor: 'var(--accent-error)', color: 'white'}}
                             >
                                 <span className="font-semibold flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
                                     Delete All Chats
                                 </span>
                             </button>
@@ -414,7 +414,9 @@ export default function Sidebar({ onSelectChat, currentChatId, onNewMessageSent,
                                 style={{backgroundColor: 'var(--bg-secondary)', color: 'var(--text-secondary)', border: '1px solid var(--sidebar-border)'}}
                             >
                                 <span className="font-semibold flex items-center gap-2">
-                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2"><path strokeLinecap="round" strokeLinejoin="round" d="M4 7v10m0 0h16M4 17l4-4m-4 4l4 4M20 7v10m0 0H4m16 0l-4-4m4 4l-4 4M12 5v14"></path></svg>
+                                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                    </svg>
                                     Clear Local Cache
                                 </span>
                             </button>
